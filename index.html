@@ -144,28 +144,52 @@
 </div>
 
 <script>
-    const supabaseUrl = 'https://esiklpxyectbekxvajnw.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
+
+    let supabaseClient = null;
+
+    // Inicialización lazy + segura
+    function getSupabase() {
+        if (supabaseClient) return supabaseClient;
+
+        if (!window.supabase) {
+            console.error("La biblioteca Supabase no está cargada");
+            alert("Error: No se pudo cargar la biblioteca de Supabase. Revisa tu conexión.");
+            return null;
+        }
+
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log("Supabase inicializado correctamente");
+            return supabaseClient;
+        } catch (err) {
+            console.error("Error al crear cliente Supabase:", err);
+            return null;
+        }
+    }
 
     let currentUser = null;
     let items = [];
 
     window.onload = () => {
-        console.log("Página cargada correctamente");
+        console.log("Página cargada");
         const stored = localStorage.getItem('currentUser');
         if (stored) {
             try {
                 currentUser = JSON.parse(stored);
                 showDashboard();
             } catch (e) {
-                console.error("Error al parsear usuario guardado:", e);
+                console.error("Error al cargar usuario guardado:", e);
                 localStorage.removeItem('currentUser');
             }
         }
     };
 
     async function handleLogin() {
+        const supabase = getSupabase();
+        if (!supabase) return;
+
         const usuario = document.getElementById('usuario').value.trim();
         const clave = document.getElementById('clave').value;
         const mensaje = document.getElementById('mensaje');
@@ -173,7 +197,7 @@
         mensaje.style.color = '#ff9800';
         mensaje.textContent = 'Verificando...';
 
-        console.log('[LOGIN] Intentando → Usuario:', usuario, '| Longitud clave:', clave.length);
+        console.log('[LOGIN] Intentando → Usuario:', usuario, '| Clave longitud:', clave.length);
 
         if (!usuario || !clave) {
             mensaje.style.color = '#f44336';
@@ -194,8 +218,8 @@
                 mensaje.style.color = '#f44336';
                 if (error.code === 'PGRST301') {
                     mensaje.textContent = 'Usuario o contraseña incorrectos';
-                } else if (error.message?.includes('permission denied')) {
-                    mensaje.textContent = 'Error de permisos (RLS). Desactiva RLS temporalmente en "usuarios"';
+                } else if (error.message?.includes('permission denied') || error.message?.includes('RLS')) {
+                    mensaje.textContent = 'Error de permisos (RLS). Desactiva RLS temporalmente en la tabla "usuarios"';
                 } else {
                     mensaje.textContent = 'Error al conectar: ' + (error.message || 'desconocido');
                 }
@@ -217,7 +241,7 @@
 
             setTimeout(showDashboard, 800);
         } catch (err) {
-            console.error('[EXCEPCIÓN]', err);
+            console.error('[EXCEPCIÓN EN LOGIN]', err);
             mensaje.style.color = '#f44336';
             mensaje.textContent = 'Error inesperado - revisa consola (F12)';
         }
@@ -255,6 +279,9 @@
     }
 
     async function createFolderAndItems() {
+        const supabase = getSupabase();
+        if (!supabase) return;
+
         const carpeta = document.getElementById('carpeta').value.trim();
         if (!carpeta) return alert('Ingresa nombre de carpeta');
         if (items.length === 0) return alert('Agrega al menos un item');
@@ -291,6 +318,9 @@
     }
 
     async function loadFolders() {
+        const supabase = getSupabase();
+        if (!supabase) return;
+
         const { data, error } = await supabase
             .from('firmas_cargos')
             .select('carpeta')
@@ -326,6 +356,9 @@
     }
 
     async function loadFolder(carpeta) {
+        const supabase = getSupabase();
+        if (!supabase) return;
+
         document.getElementById('current-carpeta').textContent = carpeta;
 
         const { data, error } = await supabase
@@ -417,6 +450,9 @@
     }
 
     async function saveSignature(idx, itemId, carpeta, itemCode, role) {
+        const supabase = getSupabase();
+        if (!supabase) return;
+
         const canvas = document.getElementById(`canvas-${idx}`);
         if (!canvas) return;
 
@@ -446,7 +482,6 @@
             update.signed_by_receptor = currentUser.id;
         }
 
-        // Determinar nuevo estatus
         const { data: row } = await supabase
             .from('firmas_cargos')
             .select('firma_receptor_url, firma_recepcion_url')
