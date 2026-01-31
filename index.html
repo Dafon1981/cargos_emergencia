@@ -6,10 +6,15 @@
     <title>Gestión de Firmas y Cargos</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
-            background: #0f0f0f;
+            background-color: #0f0f0f;
             color: #e0e0e0;
             min-height: 100vh;
             display: flex;
@@ -17,32 +22,45 @@
             align-items: center;
             padding: 20px;
         }
-        .container { width: 100%; max-width: 900px; margin: 0 auto; }
-        h1, h2, h3, h4 { color: #d4af37; margin-bottom: 1rem; }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3, h4 {
+            color: #d4af37; /* Dorado */
+            margin-bottom: 1rem;
+        }
+
         .card {
-            background: #1a1a1a;
+            background-color: #1a1a1a;
             border-radius: 12px;
             padding: 2.5rem;
             box-shadow: 0 8px 30px rgba(0,0,0,0.6);
             margin: 1.5rem 0;
         }
+
         input, textarea {
             width: 100%;
             padding: 12px;
             margin: 10px 0;
-            background: #2a2a2a;
+            background-color: #2a2a2a;
             border: 1px solid #444;
             border-radius: 6px;
             color: #e0e0e0;
             font-size: 1rem;
         }
+
         input:focus, textarea:focus {
             outline: none;
             border-color: #d4af37;
-            box-shadow: 0 0 0 3px rgba(212,175,55,0.25);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
         }
+
         button {
-            background: #d4af37;
+            background-color: #d4af37;
             color: #0f0f0f;
             border: none;
             padding: 12px 24px;
@@ -52,17 +70,32 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        button:hover { background: #b8972e; transform: translateY(-2px); }
-        button.secondary { background: #444; color: #e0e0e0; }
-        button.secondary:hover { background: #555; }
-        .hidden { display: none !important; }
-        canvas { 
-            border: 2px solid #444; 
-            background: #222; 
-            border-radius: 8px; 
-            margin: 12px 0; 
-            touch-action: none;
+
+        button:hover {
+            background-color: #b8972e;
+            transform: translateY(-2px);
         }
+
+        button.secondary {
+            background-color: #444;
+            color: #e0e0e0;
+        }
+
+        button.secondary:hover {
+            background-color: #555;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        canvas {
+            border: 2px solid #444;
+            background: #222;
+            border-radius: 8px;
+            margin: 12px 0;
+        }
+
         .item {
             background: #222;
             padding: 1.5rem;
@@ -70,159 +103,430 @@
             margin: 1.5rem 0;
             border-left: 4px solid #d4af37;
         }
-        .flex-center { display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+
+        .flex-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        label {
+            display: block;
+            margin-top: 1rem;
+            margin-bottom: 0.4rem;
+            color: #aaa;
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
+    <div class="container">
 
-    <!-- Login -->
-    <div id="login-section" class="card flex-center">
-        <h1>Inicio de Sesión</h1>
-        <form id="login-form" style="width:100%; max-width:420px;">
-            <label for="usuario">Usuario</label>
-            <input type="text" id="usuario" required placeholder="Ej: Manuel">
+        <!-- Sección de Login -->
+        <div id="login-section" class="card flex-center">
+            <h1>Inicio de Sesión</h1>
+            <form id="login-form" style="width: 100%; max-width: 420px;">
+                <label for="usuario">Usuario</label>
+                <input type="text" id="usuario" required placeholder="Ejemplo: Manuel">
 
-            <label for="clave">Contraseña</label>
-            <input type="password" id="clave" required placeholder="Ej: mutter">
+                <label for="clave">Clave</label>
+                <input type="text" id="clave" required placeholder="Ejemplo: mutter">
 
-            <button type="button" onclick="handleLogin()">Iniciar Sesión</button>
-        </form>
-        <p style="margin-top:1rem; color:#aaa; font-size:0.9rem;">
-            Nota: si no entra, revisa consola (F12) y desactiva RLS en la tabla "usuarios" temporalmente.
-        </p>
-    </div>
+                <button type="button" onclick="handleLogin()">Iniciar Sesión</button>
+            </form>
+        </div>
 
-    <!-- Dashboard -->
-    <div id="dashboard" class="hidden">
-        <div class="card flex-center">
-            <h1>Bienvenido, <span id="username" style="color:#d4af37;"></span></h1>
-            <div class="buttons">
-                <button onclick="showCreateFolder()">Crear Nueva Carpeta</button>
-                <button onclick="loadFolders()">Consultar Carpetas</button>
+        <!-- Dashboard -->
+        <div id="dashboard" class="hidden">
+            <div class="card flex-center">
+                <h1>Bienvenido, <span id="username" style="color: #d4af37;"></span></h1>
+                <div class="buttons">
+                    <button onclick="showCreateFolder()">Crear Nueva Carpeta</button>
+                    <button onclick="loadFolders()">Consultar Carpetas</button>
+                </div>
+            </div>
+            <div id="folders-list" class="card"></div>
+        </div>
+
+        <!-- Crear carpeta -->
+        <div id="create-folder" class="hidden">
+            <div class="card">
+                <h2>Crear Nueva Carpeta</h2>
+                <label for="carpeta">Nombre de la carpeta</label>
+                <input type="text" id="carpeta" required placeholder="Ej: cargosemergencia2024/30/01">
+
+                <h3>Items</h3>
+                <div id="items-container"></div>
+
+                <div class="buttons">
+                    <button onclick="addItemField()">+ Agregar Item</button>
+                    <button onclick="createFolderAndItems()">Guardar Carpeta e Items</button>
+                    <button class="secondary" onclick="backToDashboard()">Volver</button>
+                </div>
             </div>
         </div>
-        <div id="folders-list" class="card"></div>
-    </div>
 
-    <!-- Crear carpeta -->
-    <div id="create-folder" class="hidden">
-        <div class="card">
-            <h2>Crear Nueva Carpeta</h2>
-            <label for="carpeta">Nombre de la carpeta</label>
-            <input type="text" id="carpeta" required placeholder="Ej: cargosemergencia2024/30/01">
+        <!-- Ver carpeta -->
+        <div id="view-folder" class="hidden">
+            <div class="card">
+                <h2>Carpeta: <span id="current-carpeta" style="color: #d4af37;"></span></h2>
+                <div id="items-view"></div>
 
-            <h3>Items</h3>
-            <div id="items-container"></div>
-
-            <div class="buttons">
-                <button onclick="addItemField()">+ Agregar Item</button>
-                <button onclick="createFolderAndItems()">Guardar Carpeta e Items</button>
-                <button class="secondary" onclick="backToDashboard()">Volver</button>
+                <div class="buttons">
+                    <button class="secondary" onclick="backToDashboard()">Volver al inicio</button>
+                </div>
             </div>
         </div>
+
     </div>
 
-    <!-- Ver carpeta -->
-    <div id="view-folder" class="hidden">
-        <div class="card">
-            <h2>Carpeta: <span id="current-carpeta" style="color:#d4af37;"></span></h2>
-            <div id="items-view"></div>
-            <div class="buttons">
-                <button class="secondary" onclick="backToDashboard()">Volver al inicio</button>
-            </div>
-        </div>
-    </div>
+    <script>
+        const supabaseUrl = 'https://esiklpxyectbekxvajnw.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-</div>
+        let currentUser = null;
+        let items = [];
 
-<script>
-    const supabaseUrl = 'https://esiklpxyectbekxvajnw.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        // Cargar sesión guardada
+        window.onload = () => {
+            const stored = localStorage.getItem('currentUser');
+            if (stored) {
+                currentUser = JSON.parse(stored);
+                showDashboard();
+            }
+        };
 
-    let currentUser = null;
-    let items = [];
+        async function handleLogin() {
+            const usuario = document.getElementById('usuario').value.trim();
+            const clave = document.getElementById('clave').value;
 
-    window.onload = () => {
-        const stored = localStorage.getItem('currentUser');
-        if (stored) {
-            currentUser = JSON.parse(stored);
-            showDashboard();
+            console.log('=== INTENTO DE LOGIN ===');
+            console.log('Usuario ingresado:', usuario);
+            console.log('Clave ingresada (longitud):', clave.length);
+
+            if (!usuario || !clave) {
+                alert('Por favor ingresa usuario y clave');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabase
+                    .from('usuarios')
+                    .select('id, usuario, estatus')
+                    .eq('usuario', usuario)
+                    .eq('clave', clave)
+                    .single();
+
+                if (error) {
+                    console.error('Error en la consulta:', error);
+                    alert('Error al conectar con la base de datos: ' + error.message);
+                    return;
+                }
+
+                if (!data) {
+                    console.log('No se encontró usuario con esas credenciales');
+                    alert('Usuario o clave incorrectos');
+                    return;
+                }
+
+                console.log('¡Login exitoso! Usuario encontrado:', data);
+                currentUser = data;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                showDashboard();
+
+            } catch (err) {
+                console.error('Error inesperado:', err);
+                alert('Ocurrió un error inesperado. Revisa la consola (F12)');
+            }
         }
-    };
 
-    async function handleLogin() {
-        const usuario = document.getElementById('usuario').value.trim();
-        const clave = document.getElementById('clave').value;
-
-        console.log('[LOGIN] Intentando con:');
-        console.log('  Usuario:', usuario);
-        console.log('  Clave longitud:', clave.length);
-        // NO mostramos la clave completa por seguridad
-
-        if (!usuario || !clave) {
-            alert('Ingresa usuario y contraseña');
-            return;
+        function showDashboard() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('username').textContent = currentUser.usuario;
         }
 
-        try {
+        function showCreateFolder() {
+            items = [];
+            document.getElementById('items-container').innerHTML = '';
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('create-folder').classList.remove('hidden');
+        }
+
+        function addItemField() {
+            const index = items.length;
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.innerHTML = `
+                <label>Item (código)</label>
+                <input type="text" id="item-${index}" required placeholder="Ej: e20243001A">
+
+                <label>Tipo de documento</label>
+                <input type="text" id="tipo-${index}" required placeholder="Ej: cargos fuas sis">
+
+                <label>Observación (opcional)</label>
+                <textarea id="obs-${index}" rows="2" placeholder="Notas o faltantes..."></textarea>
+            `;
+            document.getElementById('items-container').appendChild(div);
+            items.push(index);
+        }
+
+        async function createFolderAndItems() {
+            const carpeta = document.getElementById('carpeta').value.trim();
+            if (!carpeta) {
+                alert('Debes ingresar un nombre de carpeta');
+                return;
+            }
+            if (items.length === 0) {
+                alert('Agrega al menos un item');
+                return;
+            }
+
+            for (let i = 0; i < items.length; i++) {
+                const itemCode = document.getElementById(`item-${i}`).value.trim();
+                const tipo = document.getElementById(`tipo-${i}`).value.trim();
+                const obs = document.getElementById(`obs-${i}`).value.trim();
+
+                if (!itemCode || !tipo) {
+                    alert(`El item ${i+1} necesita código y tipo de documento`);
+                    return;
+                }
+
+                const { error } = await supabase
+                    .from('firmas_cargos')
+                    .insert({
+                        carpeta,
+                        item: itemCode,
+                        tipo_documento: tipo,
+                        observacion: obs,
+                        created_by: currentUser.id,
+                        estatus: 'pendiente'
+                    });
+
+                if (error) {
+                    alert('Error al guardar item ' + (i+1) + ': ' + error.message);
+                    return;
+                }
+            }
+
+            alert('¡Carpeta e items creados correctamente!');
+            loadFolder(carpeta);
+        }
+
+        async function loadFolders() {
             const { data, error } = await supabase
-                .from('usuarios')
-                .select('id, usuario, estatus, email, telefono')
-                .eq('usuario', usuario)
-                .eq('clave', clave)
-                .single();
+                .from('firmas_cargos')
+                .select('carpeta')
+                .order('carpeta')
+                .distinct();
 
             if (error) {
-                console.error('[LOGIN ERROR]', error);
-                if (error.code === 'PGRST301') {
-                    alert('No se encontró el usuario o credenciales incorrectas');
-                } else if (error.message.includes('permission denied')) {
-                    alert('Error de permisos (RLS). Desactiva RLS en la tabla "usuarios" temporalmente para pruebas.');
-                } else {
-                    alert('Error al conectar: ' + error.message);
-                }
+                alert('No se pudieron cargar las carpetas: ' + error.message);
                 return;
             }
 
-            if (!data) {
-                alert('Usuario o contraseña incorrectos');
+            const container = document.getElementById('folders-list');
+            container.innerHTML = '<h3>Carpetas disponibles</h3>';
+
+            if (data.length === 0) {
+                container.innerHTML += '<p style="color:#aaa;">Aún no hay carpetas creadas.</p>';
                 return;
             }
 
-            console.log('[LOGIN ÉXITO]', data.usuario);
-            currentUser = data;
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            showDashboard();
-        } catch (err) {
-            console.error('[EXCEPCIÓN EN LOGIN]', err);
-            alert('Error inesperado. Revisa la consola (F12)');
+            const buttons = document.createElement('div');
+            buttons.className = 'buttons';
+            buttons.style.flexDirection = 'column';
+            buttons.style.alignItems = 'stretch';
+
+            data.forEach(f => {
+                const btn = document.createElement('button');
+                btn.textContent = f.carpeta;
+                btn.onclick = () => loadFolder(f.carpeta);
+                buttons.appendChild(btn);
+            });
+
+            container.appendChild(buttons);
         }
-    }
 
-    function showDashboard() {
-        document.getElementById('login-section').classList.add('hidden');
-        document.getElementById('dashboard').classList.remove('hidden');
-        document.getElementById('username').textContent = currentUser.usuario;
-    }
+        async function loadFolder(carpeta) {
+            document.getElementById('current-carpeta').textContent = carpeta;
 
-    function showCreateFolder() {
-        items = [];
-        document.getElementById('items-container').innerHTML = '';
-        document.getElementById('dashboard').classList.add('hidden');
-        document.getElementById('create-folder').classList.remove('hidden');
-    }
+            const { data, error } = await supabase
+                .from('firmas_cargos')
+                .select('*')
+                .eq('carpeta', carpeta)
+                .order('item');
 
-    function addItemField() {
-        const index = items.length;
-        const div = document.createElement('div');
-        div.className = 'item';
-        div.innerHTML = `
-            <label>Item (ej: e20243001A)</label>
-            <input type="text" id="item-${index}" required placeholder="Código del item">
+            if (error) {
+                alert('Error al cargar la carpeta: ' + error.message);
+                return;
+            }
 
-            <label>Tipo de Documento</label>
-            <input type
+            const container = document.getElementById('items-view');
+            container.innerHTML = '';
+
+            data.forEach((itemData, index) => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `
+                    <h4>${itemData.item}</h4>
+                    <p><strong>Tipo:</strong> ${itemData.tipo_documento}</p>
+                    <p><strong>Observación:</strong> ${itemData.observacion || '—'}</p>
+                    <p><strong>Estatus:</strong> ${itemData.estatus}</p>
+                    <p><strong>Firma Receptor:</strong> ${itemData.firma_receptor_url ? '✓ Firmado' : 'Pendiente'}</p>
+                    <p><strong>Firma Recepción:</strong> ${itemData.firma_recepcion_url ? '✓ Firmado' : 'Pendiente'}</p>
+                `;
+
+                const isCreator = itemData.created_by === currentUser.id;
+                const role = isCreator ? 'recepcion' : 'receptor';
+                const alreadySigned = isCreator ? !!itemData.firma_recepcion_url : !!itemData.firma_receptor_url;
+
+                if (!alreadySigned) {
+                    div.innerHTML += `
+                        <h5>Firmar como ${role.toUpperCase()}</h5>
+                        <canvas id="canvas-${index}" width="420" height="220"></canvas>
+                        <div class="buttons">
+                            <button class="secondary" onclick="clearCanvas(${index})">Limpiar</button>
+                            <button onclick="saveSignature(${index}, ${itemData.id}, '${carpeta}', '${itemData.item}', '${role}')">Guardar Firma</button>
+                        </div>
+                    `;
+                }
+
+                container.appendChild(div);
+
+                setTimeout(() => initCanvas(index), 100);
+            });
+
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('create-folder').classList.add('hidden');
+            document.getElementById('view-folder').classList.remove('hidden');
+        }
+
+        function initCanvas(index) {
+            const canvas = document.getElementById(`canvas-${index}`);
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            ctx.strokeStyle = '#d4af37';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            let drawing = false;
+
+            const start = (e) => { 
+                drawing = true; 
+                draw(e); 
+            };
+            const end = () => { 
+                drawing = false; 
+                ctx.beginPath(); 
+            };
+            const draw = (e) => {
+                if (!drawing) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX || e.touches?.[0]?.clientX || 0) - rect.left;
+                const y = (e.clientY || e.touches?.[0]?.clientY || 0) - rect.top;
+
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            };
+
+            canvas.addEventListener('mousedown', start);
+            canvas.addEventListener('mouseup', end);
+            canvas.addEventListener('mousemove', draw);
+
+            // Soporte para móviles
+            canvas.addEventListener('touchstart', start);
+            canvas.addEventListener('touchend', end);
+            canvas.addEventListener('touchmove', draw);
+        }
+
+        function clearCanvas(index) {
+            const canvas = document.getElementById(`canvas-${index}`);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        async function saveSignature(index, itemId, carpeta, itemCode, role) {
+            const canvas = document.getElementById(`canvas-${index}`);
+            const dataURL = canvas.toDataURL('image/png');
+            const blob = dataURLtoBlob(dataURL);
+
+            const path = `${carpeta}/${itemCode}_${role}_${Date.now()}.png`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('firma_cargos')
+                .upload(path, blob, { contentType: 'image/png' });
+
+            if (uploadError) {
+                alert('Error al subir la firma: ' + uploadError.message);
+                return;
+            }
+
+            const { data: urlData } = supabase.storage.from('firma_cargos').getPublicUrl(path);
+            const publicUrl = urlData.publicUrl;
+
+            const updateData = {};
+            if (role === 'recepcion') {
+                updateData.firma_recepcion_url = publicUrl;
+                updateData.signed_by_recepcion = currentUser.id;
+            } else {
+                updateData.firma_receptor_url = publicUrl;
+                updateData.signed_by_receptor = currentUser.id;
+            }
+
+            const { data: current } = await supabase
+                .from('firmas_cargos')
+                .select('firma_receptor_url, firma_recepcion_url')
+                .eq('id', itemId)
+                .single();
+
+            if ((role === 'recepcion' && current?.firma_receptor_url) ||
+                (role === 'receptor' && current?.firma_recepcion_url)) {
+                updateData.estatus = 'completado';
+            } else {
+                updateData.estatus = 'firmado_parcial';
+            }
+
+            const { error } = await supabase
+                .from('firmas_cargos')
+                .update(updateData)
+                .eq('id', itemId);
+
+            if (error) {
+                alert('Error al guardar la firma en la base de datos');
+            } else {
+                alert('Firma guardada correctamente');
+                loadFolder(carpeta);
+            }
+        }
+
+        function dataURLtoBlob(dataurl) {
+            const arr = dataurl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) u8arr[n] = bstr.charCodeAt(n);
+            return new Blob([u8arr], { type: mime });
+        }
+
+        function backToDashboard() {
+            document.getElementById('create-folder').classList.add('hidden');
+            document.getElementById('view-folder').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('folders-list').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
