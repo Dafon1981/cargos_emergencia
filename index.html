@@ -58,13 +58,14 @@
         .hidden { display: none !important; }
         canvas { 
             border: 2px solid #444; 
-            background: #222; 
+            background: #f8f8f8;          /* fondo claro para que se vea como papel */
             border-radius: 8px; 
             margin: 12px 0; 
             touch-action: none;
             width: 100%; 
-            max-width: 420px;
-            height: 220px;
+            max-width: 500px;             /* un poco más ancho para firmar cómodo */
+            height: 280px;                /* más alto también */
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.1);
         }
         .item {
             background: #222;
@@ -149,13 +150,12 @@
 
     let supabaseClient = null;
 
-    // Inicialización lazy + segura
     function getSupabase() {
         if (supabaseClient) return supabaseClient;
 
         if (!window.supabase) {
             console.error("La biblioteca Supabase no está cargada");
-            alert("Error: No se pudo cargar la biblioteca de Supabase. Revisa tu conexión.");
+            alert("Error: No se pudo cargar la biblioteca de Supabase.");
             return null;
         }
 
@@ -411,42 +411,95 @@
         document.getElementById('view-folder').classList.remove('hidden');
     }
 
+    // ────────────────────────────────────────────────
+    // MEJORA DE LA FIRMA: más realista y con mejor control
+    // ────────────────────────────────────────────────
     function initCanvas(idx) {
         const canvas = document.getElementById(`canvas-${idx}`);
         if (!canvas) return;
 
         const ctx = canvas.getContext('2d');
-        ctx.strokeStyle = '#d4af37';
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#000000';         // negro clásico de firma
         ctx.lineCap = 'round';
-        let drawing = false;
+        ctx.lineJoin = 'round';
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let lastTime = 0;
+        let lastLineWidth = 2;
 
-        const getPos = e => {
+        function getPosition(e) {
             const rect = canvas.getBoundingClientRect();
             return {
-                x: (e.clientX || (e.touches && e.touches[0]?.clientX) || 0) - rect.left,
-                y: (e.clientY || (e.touches && e.touches[0]?.clientY) || 0) - rect.top
+                x: (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left,
+                y: (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top
             };
-        };
+        }
 
-        const start = e => { e.preventDefault(); drawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); };
-        const end = () => { drawing = false; ctx.beginPath(); };
-        const draw = e => {
-            if (!drawing) return;
+        function draw(e) {
+            if (!isDrawing) return;
             e.preventDefault();
-            const pos = getPos(e);
+
+            const pos = getPosition(e);
+            const currentTime = Date.now();
+            const timeDiff = currentTime - lastTime || 1;
+
+            // Grosor variable según velocidad (más lento = más grueso)
+            const velocity = Math.sqrt(Math.pow(pos.x - lastX, 2) + Math.pow(pos.y - lastY, 2)) / timeDiff;
+            const lineWidth = Math.max(0.8, Math.min(4.5, 4 - velocity * 80)); // rango realista
+
+            ctx.lineWidth = (lineWidth + lastLineWidth) / 2; // suavizado
+
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-        };
 
-        ['mousedown', 'touchstart'].forEach(ev => canvas.addEventListener(ev, start));
-        ['mouseup', 'mouseout', 'touchend'].forEach(ev => canvas.addEventListener(ev, end));
-        ['mousemove', 'touchmove'].forEach(ev => canvas.addEventListener(ev, draw));
+            lastX = pos.x;
+            lastY = pos.y;
+            lastTime = currentTime;
+            lastLineWidth = lineWidth;
+        }
+
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getPosition(e);
+            lastX = pos.x;
+            lastY = pos.y;
+            lastTime = Date.now();
+            lastLineWidth = 2;
+            // punto inicial pequeño
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 1, 0, Math.PI * 2);
+            ctx.fillStyle = '#000';
+            ctx.fill();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+
+        // Eventos mouse
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Eventos touch (celular/tablet)
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchcancel', stopDrawing);
     }
 
     function clearCanvas(idx) {
         const canvas = document.getElementById(`canvas-${idx}`);
-        if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
     }
 
     async function saveSignature(idx, itemId, carpeta, itemCode, role) {
