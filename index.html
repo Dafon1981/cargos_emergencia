@@ -3,71 +3,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App de Firmas y Cargos</title>
-     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
+    <title>Gestión de Firmas y Cargos</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     <style>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-        .hidden { display: none; }
-        canvas { border: 1px solid #000; background: #fff; }
-        button { margin: 5px; }
-        input, textarea { margin: 5px; width: 300px; }
-        .item { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1, h2, h3, h4 {
+            color: #d4af37; /* Dorado */
+            margin-bottom: 1rem;
+        }
+
+        .card {
+            background-color: #1a1a1a;
+            border-radius: 12px;
+            padding: 2.5rem;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+            margin: 1.5rem 0;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #d4af37;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
+        }
+
+        button {
+            background-color: #d4af37;
+            color: #0f0f0f;
+            border: none;
+            padding: 12px 24px;
+            margin: 8px 4px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: #b8972e;
+            transform: translateY(-2px);
+        }
+
+        button.secondary {
+            background-color: #444;
+            color: #e0e0e0;
+        }
+
+        button.secondary:hover {
+            background-color: #555;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        canvas {
+            border: 2px solid #444;
+            background: #222;
+            border-radius: 8px;
+            margin: 12px 0;
+        }
+
+        .item {
+            background: #222;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+            border-left: 4px solid #d4af37;
+        }
+
+        .flex-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Sección de Login -->
-    <div id="login-section">
-        <h1>Iniciar Sesión</h1>
-        <form id="login-form">
-            <label for="usuario">Usuario:</label><br>
-            <input type="text" id="usuario" required><br>
-            <label for="clave">Clave:</label><br>
-            <input type="password" id="clave" required><br>
-            <button type="button" onclick="handleLogin()">Iniciar Sesión</button>
-        </form>
-    </div>
+    <div class="container">
 
-    <!-- Dashboard después de login -->
-    <div id="dashboard" class="hidden">
-        <h1>Bienvenido, <span id="username"></span></h1>
-        <button onclick="showCreateFolder()">Crear Nueva Carpeta</button>
-        <button onclick="loadFolders()">Consultar Carpetas</button>
-        <div id="folders-list"></div>
-    </div>
+        <!-- Login -->
+        <div id="login-section" class="card flex-center">
+            <h1>Inicio de Sesión</h1>
+            <form id="login-form" style="width: 100%; max-width: 420px;">
+                <label for="usuario">Usuario</label>
+                <input type="text" id="usuario" required placeholder="Ingresa tu usuario">
 
-    <!-- Sección para crear carpeta -->
-    <div id="create-folder" class="hidden">
-        <h2>Crear Carpeta</h2>
-        <label for="carpeta">Nombre de Carpeta (ej: cargosemergencia2024/30/01):</label><br>
-        <input type="text" id="carpeta" required><br>
-        <h3>Agregar Items</h3>
-        <div id="items-container"></div>
-        <button onclick="addItemField()">Agregar Item</button>
-        <button onclick="createFolderAndItems()">Guardar Carpeta e Items</button>
-        <button onclick="backToDashboard()">Volver</button>
-    </div>
+                <label for="clave">Contraseña</label>
+                <input type="password" id="clave" required placeholder="Ingresa tu contraseña">
 
-    <!-- Sección para ver carpeta -->
-    <div id="view-folder" class="hidden">
-        <h2>Carpeta: <span id="current-carpeta"></span></h2>
-        <div id="items-view"></div>
-        <button onclick="backToDashboard()">Volver</button>
+                <button type="button" onclick="handleLogin()">Iniciar Sesión</button>
+            </form>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" class="hidden">
+            <div class="card flex-center">
+                <h1>Bienvenido, <span id="username" style="color: #d4af37;"></span></h1>
+                <div class="buttons">
+                    <button onclick="showCreateFolder()">Crear Nueva Carpeta</button>
+                    <button onclick="loadFolders()">Consultar Carpetas</button>
+                </div>
+            </div>
+            <div id="folders-list" class="card"></div>
+        </div>
+
+        <!-- Crear carpeta -->
+        <div id="create-folder" class="hidden">
+            <div class="card">
+                <h2>Crear Nueva Carpeta</h2>
+                <label for="carpeta">Nombre de la carpeta (ej: cargosemergencia2024/30/01)</label>
+                <input type="text" id="carpeta" required placeholder="Ejemplo: cargosemergencia2024/30/01">
+
+                <h3>Items</h3>
+                <div id="items-container"></div>
+
+                <div class="buttons">
+                    <button onclick="addItemField()">+ Agregar Item</button>
+                    <button onclick="createFolderAndItems()">Guardar Carpeta e Items</button>
+                    <button class="secondary" onclick="backToDashboard()">Volver</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ver carpeta -->
+        <div id="view-folder" class="hidden">
+            <div class="card">
+                <h2>Carpeta: <span id="current-carpeta" style="color: #d4af37;"></span></h2>
+                <div id="items-view"></div>
+
+                <div class="buttons">
+                    <button class="secondary" onclick="backToDashboard()">Volver al inicio</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
         const supabaseUrl = 'https://esiklpxyectbekxvajnw.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
-        const supabase = supabasejs.createClient(supabaseUrl, supabaseKey);
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
         let currentUser = null;
-        let items = []; // Array temporal para items al crear carpeta
+        let items = []; // Índices temporales para los campos de items
 
-        // Función para login (custom, ya que usa tabla usuarios)
+        // Intentar cargar usuario guardado
+        window.onload = () => {
+            const stored = localStorage.getItem('currentUser');
+            if (stored) {
+                currentUser = JSON.parse(stored);
+                showDashboard();
+            }
+        };
+
         async function handleLogin() {
-            const usuario = document.getElementById('usuario').value;
+            const usuario = document.getElementById('usuario').value.trim();
             const clave = document.getElementById('clave').value;
+
+            if (!usuario || !clave) {
+                alert('Ingresa usuario y contraseña');
+                return;
+            }
 
             const { data, error } = await supabase
                 .from('usuarios')
@@ -77,29 +215,22 @@
                 .single();
 
             if (error || !data) {
-                alert('Error en login: ' + (error ? error.message : 'Credenciales inválidas'));
+                alert('Credenciales incorrectas o error de conexión');
+                console.error(error);
                 return;
             }
 
             currentUser = data;
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            showDashboard();
+        }
+
+        function showDashboard() {
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
             document.getElementById('username').textContent = currentUser.usuario;
         }
 
-        // Cargar usuario de localStorage si existe
-        window.onload = () => {
-            const storedUser = localStorage.getItem('currentUser');
-            if (storedUser) {
-                currentUser = JSON.parse(storedUser);
-                document.getElementById('login-section').classList.add('hidden');
-                document.getElementById('dashboard').classList.remove('hidden');
-                document.getElementById('username').textContent = currentUser.usuario;
-            }
-        };
-
-        // Mostrar sección de crear carpeta
         function showCreateFolder() {
             items = [];
             document.getElementById('items-container').innerHTML = '';
@@ -107,40 +238,49 @@
             document.getElementById('create-folder').classList.remove('hidden');
         }
 
-        // Agregar campo para nuevo item
         function addItemField() {
             const index = items.length;
             const div = document.createElement('div');
-            div.classList.add('item');
+            div.className = 'item';
             div.innerHTML = `
-                <label>Item (ej: e20243001A):</label><br>
-                <input type="text" id="item-${index}" required><br>
-                <label>Tipo de Documento:</label><br>
-                <input type="text" id="tipo-${index}" required><br>
-                <label>Observación:</label><br>
-                <textarea id="obs-${index}"></textarea><br>
+                <label>Item (ej: e20243001A)</label>
+                <input type="text" id="item-${index}" required placeholder="Código del item">
+
+                <label>Tipo de Documento</label>
+                <input type="text" id="tipo-${index}" required placeholder="Ej: cargos fuas sis">
+
+                <label>Observación (opcional)</label>
+                <textarea id="obs-${index}" rows="2" placeholder="Notas o faltantes..."></textarea>
             `;
             document.getElementById('items-container').appendChild(div);
             items.push(index);
         }
 
-        // Crear carpeta e items en la tabla
         async function createFolderAndItems() {
-            const carpeta = document.getElementById('carpeta').value;
-            if (!carpeta || items.length === 0) {
-                alert('Debe ingresar carpeta y al menos un item');
+            const carpeta = document.getElementById('carpeta').value.trim();
+            if (!carpeta) {
+                alert('Debes ingresar un nombre de carpeta');
+                return;
+            }
+            if (items.length === 0) {
+                alert('Agrega al menos un item');
                 return;
             }
 
             for (let i = 0; i < items.length; i++) {
-                const itemCode = document.getElementById(`item-${i}`).value;
-                const tipo = document.getElementById(`tipo-${i}`).value;
-                const obs = document.getElementById(`obs-${i}`).value;
+                const itemCode = document.getElementById(`item-${i}`).value.trim();
+                const tipo = document.getElementById(`tipo-${i}`).value.trim();
+                const obs = document.getElementById(`obs-${i}`).value.trim();
+
+                if (!itemCode || !tipo) {
+                    alert(`El item ${i+1} necesita código y tipo de documento`);
+                    return;
+                }
 
                 const { error } = await supabase
                     .from('firmas_cargos')
                     .insert({
-                        carpeta: carpeta,
+                        carpeta,
                         item: itemCode,
                         tipo_documento: tipo,
                         observacion: obs,
@@ -149,134 +289,164 @@
                     });
 
                 if (error) {
-                    alert('Error al insertar item: ' + error.message);
+                    alert('Error al guardar item ' + (i+1) + ': ' + error.message);
                     return;
                 }
             }
 
-            alert('Carpeta e items creados exitosamente. Ahora puedes firmar como recepcionista.');
-            loadFolder(carpeta); // Ir a ver la carpeta para firmar
+            alert('¡Carpeta e items creados correctamente!');
+            loadFolder(carpeta);
         }
 
-        // Cargar lista de carpetas (distinct)
         async function loadFolders() {
             const { data, error } = await supabase
                 .from('firmas_cargos')
                 .select('carpeta')
+                .order('carpeta')
                 .distinct();
 
             if (error) {
-                alert('Error al cargar carpetas: ' + error.message);
+                alert('No se pudieron cargar las carpetas');
+                console.error(error);
                 return;
             }
 
-            const list = document.getElementById('folders-list');
-            list.innerHTML = '<h3>Carpetas Disponibles</h3>';
-            data.forEach(folder => {
+            const container = document.getElementById('folders-list');
+            container.innerHTML = '<h3>Carpetas disponibles</h3>';
+
+            if (data.length === 0) {
+                container.innerHTML += '<p style="color:#aaa;">Aún no hay carpetas creadas.</p>';
+                return;
+            }
+
+            const buttons = document.createElement('div');
+            buttons.className = 'buttons';
+            buttons.style.flexDirection = 'column';
+            buttons.style.alignItems = 'stretch';
+
+            data.forEach(f => {
                 const btn = document.createElement('button');
-                btn.textContent = folder.carpeta;
-                btn.onclick = () => loadFolder(folder.carpeta);
-                list.appendChild(btn);
+                btn.textContent = f.carpeta;
+                btn.onclick = () => loadFolder(f.carpeta);
+                buttons.appendChild(btn);
             });
+
+            container.appendChild(buttons);
         }
 
-        // Cargar items de una carpeta y mostrar firmas
         async function loadFolder(carpeta) {
             document.getElementById('current-carpeta').textContent = carpeta;
+
             const { data, error } = await supabase
                 .from('firmas_cargos')
                 .select('*')
-                .eq('carpeta', carpeta);
+                .eq('carpeta', carpeta)
+                .order('item');
 
             if (error) {
-                alert('Error al cargar items: ' + error.message);
+                alert('Error al cargar la carpeta');
                 return;
             }
 
-            const view = document.getElementById('items-view');
-            view.innerHTML = '';
+            const container = document.getElementById('items-view');
+            container.innerHTML = '';
+
             data.forEach((itemData, index) => {
                 const div = document.createElement('div');
-                div.classList.add('item');
+                div.className = 'item';
                 div.innerHTML = `
-                    <h4>Item: ${itemData.item}</h4>
-                    <p>Tipo: ${itemData.tipo_documento}</p>
-                    <p>Observación: ${itemData.observacion || 'Ninguna'}</p>
-                    <p>Estatus: ${itemData.estatus}</p>
-                    <p>Firma Receptor: ${itemData.firma_receptor_url ? 'Firmado' : 'Pendiente'}</p>
-                    <p>Firma Recepcion: ${itemData.firma_recepcion_url ? 'Firmado' : 'Pendiente'}</p>
+                    <h4>${itemData.item}</h4>
+                    <p><strong>Tipo:</strong> ${itemData.tipo_documento}</p>
+                    <p><strong>Observación:</strong> ${itemData.observacion || '—'}</p>
+                    <p><strong>Estatus:</strong> ${itemData.estatus}</p>
+                    <p><strong>Firma Receptor:</strong> ${itemData.firma_receptor_url ? '✓ Firmado' : 'Pendiente'}</p>
+                    <p><strong>Firma Recepción:</strong> ${itemData.firma_recepcion_url ? '✓ Firmado' : 'Pendiente'}</p>
                 `;
 
-                // Determinar rol: si es creator, firma como recepcion; else como receptor
                 const isCreator = itemData.created_by === currentUser.id;
                 const role = isCreator ? 'recepcion' : 'receptor';
                 const alreadySigned = isCreator ? !!itemData.firma_recepcion_url : !!itemData.firma_receptor_url;
 
                 if (!alreadySigned) {
                     div.innerHTML += `
-                        <h5>Firmar como ${role}</h5>
-                        <canvas id="canvas-${index}" width="400" height="200"></canvas><br>
-                        <button onclick="clearCanvas(${index})">Limpiar</button>
-                        <button onclick="saveSignature(${index}, '${itemData.id}', '${carpeta}', '${itemData.item}', '${role}')">Guardar Firma</button>
+                        <h5>Firmar como ${role.toUpperCase()}</h5>
+                        <canvas id="canvas-${index}" width="420" height="220"></canvas>
+                        <div class="buttons">
+                            <button class="secondary" onclick="clearCanvas(${index})">Limpiar</button>
+                            <button onclick="saveSignature(${index}, ${itemData.id}, '${carpeta}', '${itemData.item}', '${role}')">Guardar Firma</button>
+                        </div>
                     `;
                 }
 
-                view.appendChild(div);
+                container.appendChild(div);
+
+                // Inicializar canvas
+                setTimeout(() => initCanvas(index), 100);
             });
 
             document.getElementById('dashboard').classList.add('hidden');
             document.getElementById('create-folder').classList.add('hidden');
             document.getElementById('view-folder').classList.remove('hidden');
-
-            // Inicializar canvases después de render
-            data.forEach((_, index) => initCanvas(index));
         }
 
-        // Inicializar canvas para dibujo
         function initCanvas(index) {
             const canvas = document.getElementById(`canvas-${index}`);
             if (!canvas) return;
+
             const ctx = canvas.getContext('2d');
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#d4af37';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
             let drawing = false;
 
-            canvas.addEventListener('mousedown', () => { drawing = true; });
-            canvas.addEventListener('mouseup', () => { drawing = false; ctx.beginPath(); });
-            canvas.addEventListener('mousemove', (e) => {
-                if (drawing) {
-                    ctx.lineTo(e.offsetX, e.offsetY);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(e.offsetX, e.offsetY);
-                }
-            });
+            const start = (e) => { drawing = true; draw(e); };
+            const end = () => { drawing = false; ctx.beginPath(); };
+            const draw = (e) => {
+                if (!drawing) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX || e.touches[0].clientX) - rect.left;
+                const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+                ctx.lineTo(x, y);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+            };
+
+            canvas.addEventListener('mousedown', start);
+            canvas.addEventListener('mouseup', end);
+            canvas.addEventListener('mousemove', draw);
+
+            // Soporte touch (móviles)
+            canvas.addEventListener('touchstart', start);
+            canvas.addEventListener('touchend', end);
+            canvas.addEventListener('touchmove', draw);
         }
 
-        // Limpiar canvas
         function clearCanvas(index) {
             const canvas = document.getElementById(`canvas-${index}`);
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        // Guardar firma: subir a storage y actualizar tabla
         async function saveSignature(index, itemId, carpeta, itemCode, role) {
             const canvas = document.getElementById(`canvas-${index}`);
             const dataURL = canvas.toDataURL('image/png');
             const blob = dataURLtoBlob(dataURL);
-            const path = `${carpeta}/${itemCode}_${role}.png`;
+
+            const path = `${carpeta}/${itemCode}_${role}_${Date.now()}.png`;
 
             const { error: uploadError } = await supabase.storage
                 .from('firma_cargos')
                 .upload(path, blob, { contentType: 'image/png' });
 
             if (uploadError) {
-                alert('Error al subir firma: ' + uploadError.message);
+                alert('Error al subir la firma: ' + uploadError.message);
                 return;
             }
 
-            const { publicUrl } = supabase.storage.from('firma_cargos').getPublicUrl(path).data;
+            const { data: urlData } = supabase.storage.from('firma_cargos').getPublicUrl(path);
+            const publicUrl = urlData.publicUrl;
 
             const updateData = {};
             if (role === 'recepcion') {
@@ -287,37 +457,43 @@
                 updateData.signed_by_receptor = currentUser.id;
             }
 
-            // Actualizar estatus si ambas firmas están
-            if (updateData.firma_recepcion_url && updateData.firma_receptor_url) {
+            // Actualizar estatus automáticamente
+            const { data: current } = await supabase
+                .from('firmas_cargos')
+                .select('firma_receptor_url, firma_recepcion_url')
+                .eq('id', itemId)
+                .single();
+
+            if ((role === 'recepcion' && current.firma_receptor_url) ||
+                (role === 'receptor' && current.firma_recepcion_url)) {
                 updateData.estatus = 'completado';
-            } else if (updateData.firma_recepcion_url || updateData.firma_receptor_url) {
+            } else {
                 updateData.estatus = 'firmado_parcial';
             }
 
-            const { error: updateError } = await supabase
+            const { error } = await supabase
                 .from('firmas_cargos')
                 .update(updateData)
                 .eq('id', itemId);
 
-            if (updateError) {
-                alert('Error al actualizar firma: ' + updateError.message);
+            if (error) {
+                alert('Error al guardar la firma en la base de datos');
             } else {
-                alert('Firma guardada exitosamente.');
-                loadFolder(carpeta); // Recargar vista
+                alert('Firma guardada correctamente');
+                loadFolder(carpeta);
             }
         }
 
-        // Convertir dataURL a Blob
         function dataURLtoBlob(dataurl) {
-            let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
-                bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-            while (n--) {
-                u8arr[n] = bstr.charCodeAt(n);
-            }
+            const arr = dataurl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) u8arr[n] = bstr.charCodeAt(n);
             return new Blob([u8arr], { type: mime });
         }
 
-        // Volver al dashboard
         function backToDashboard() {
             document.getElementById('create-folder').classList.add('hidden');
             document.getElementById('view-folder').classList.add('hidden');
@@ -327,4 +503,3 @@
     </script>
 </body>
 </html>
-
