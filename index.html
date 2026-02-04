@@ -210,24 +210,66 @@
         items.push(index);
     }
 
-    async function createFolderAndItems() {
-        const supabase = getSupabase(); if (!supabase) return;
-        const carpeta = document.getElementById('carpeta').value.trim();
-        if (!carpeta || items.length === 0) { alert("Nombre de carpeta y al menos un item son requeridos."); return; }
-        const itemsToInsert = [];
-        for (let i = 0; i < items.length; i++) {
-            const itemCode = document.getElementById(`item-${i}`).value.trim();
-            const tipo = document.getElementById(`tipo-${i}`).value.trim();
-            const obs = document.getElementById(`obs-${i}`).value.trim();
-            if (!itemCode || !tipo) { alert(`Item ${i+1} está incompleto.`); return; }
-            itemsToInsert.push({ carpeta, item: itemCode, tipo_documento: tipo, observacion: obs, created_by: currentUser.id, responsable: currentUser.usuario, estatus: 'pendiente' });
-        }
-        const { error } = await supabase.from('firmas_cargos').insert(itemsToInsert);
-        if (error) { alert('Error al guardar: ' + error.message); return; }
-        alert('Carpeta creada exitosamente');
-        loadFolder(carpeta);
+
+
+
+    
+   // VERSIÓN NUEVA (con la verificación)
+async function createFolderAndItems() {
+    const supabase = getSupabase(); if (!supabase) return;
+    const carpeta = document.getElementById('carpeta').value.trim();
+    if (!carpeta) {
+        alert("El nombre de la carpeta es obligatorio.");
+        return;
+    }
+    if (items.length === 0) {
+        alert("Debe agregar al menos un item.");
+        return;
     }
 
+    // --- INICIO DE LA VERIFICACIÓN ---
+    // 1. Consultamos a la base de datos si ya existe una fila con ese nombre de carpeta.
+    const { data: existing, error: checkError } = await supabase
+        .from('firmas_cargos')
+        .select('carpeta')
+        .eq('carpeta', carpeta)
+        .limit(1); // Solo necesitamos saber si existe al menos uno, no necesitamos traer todos.
+
+    // 2. Manejamos cualquier error durante la consulta.
+    if (checkError) {
+        alert('Error al verificar la carpeta: ' + checkError.message);
+        return;
+    }
+
+    // 3. Si la consulta devuelve algún resultado (longitud > 0), significa que la carpeta ya existe.
+    if (existing && existing.length > 0) {
+        alert(`Error: La carpeta "${carpeta}" ya existe. Por favor, elige otro nombre.`);
+        return; // Detenemos la ejecución para no crear el duplicado.
+    }
+    // --- FIN DE LA VERIFICACIÓN ---
+
+    // Si el código llega hasta aquí, significa que la carpeta no existe y podemos continuar.
+    // El resto de la función es exactamente igual que antes.
+    const itemsToInsert = [];
+    for (let i = 0; i < items.length; i++) {
+        const itemCode = document.getElementById(`item-${i}`).value.trim();
+        const tipo = document.getElementById(`tipo-${i}`).value.trim();
+        const obs = document.getElementById(`obs-${i}`).value.trim();
+        if (!itemCode || !tipo) { alert(`Item ${i+1} está incompleto.`); return; }
+        itemsToInsert.push({ carpeta, item: itemCode, tipo_documento: tipo, observacion: obs, created_by: currentUser.id, responsable: currentUser.usuario, estatus: 'pendiente' });
+    }
+    
+    const { error } = await supabase.from('firmas_cargos').insert(itemsToInsert);
+    if (error) { alert('Error al guardar: ' + error.message); return; }
+    
+    alert('Carpeta creada exitosamente');
+    loadFolder(carpeta);
+}
+
+
+
+
+    
     async function loadFolders() {
         const supabase = getSupabase(); if (!supabase) return;
         const container = document.getElementById('folders-list');
@@ -333,5 +375,6 @@
 </script>
 </body>
 </html>
+
 
 
