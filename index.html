@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Firmas y Cargos v2.0 (Estable - Eliminar Items)</title>
+    <title>Gestión de Firmas y Cargos v2.1 (Resumen)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
+    <!-- ¡NUEVAS LIBRERÍAS PARA EXPORTAR! -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
+        /* --- Estilos existentes sin cambios --- */
         * { margin:0; padding:0; box-sizing:border-box; }
         html { height: 100%; }
         body {
@@ -73,6 +77,36 @@
             line-height: 1;
         }
         .delete-item-btn:hover { background: #757575; }
+
+        /* --- ¡NUEVOS ESTILOS PARA EL RESUMEN! --- */
+        #summary-view {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .summary-page {
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 20px auto;
+            color: #333;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        .summary-page h1 { color: #333; text-align: center; }
+        .summary-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 20px; }
+        .summary-table th, .summary-table td { border: 1px solid #ccc; padding: 6px; text-align: left; vertical-align: middle; }
+        .summary-table th { background: #f2f2f2; }
+        .summary-table img { max-height: 30px; vertical-align: middle; background: #fff; }
+        .summary-table .signer-info { display: flex; align-items: center; gap: 8px; }
+        .summary-table .signer-name { font-size: 8pt; color: #555; }
+        .page-break { page-break-after: always; }
+        #summary-controls { position: fixed; top: 20px; right: 20px; z-index: 2001; }
     </style>
 </head>
 <body>
@@ -97,6 +131,8 @@
             <div class="buttons">
                 <button onclick="showCreateFolder()">Crear Nueva Carpeta</button>
                 <button onclick="loadFolders()">Consultar Carpetas</button>
+                <!-- ¡NUEVO BOTÓN! -->
+                <button class="secondary" onclick="generateSummary()">Resumen</button>
                 <button class="danger" onclick="handleLogout()">Cerrar Sesión</button>
             </div>
         </div>
@@ -139,13 +175,25 @@
     </div>
 </div>
 
+<!-- ¡NUEVA VISTA PARA EL RESUMEN! -->
+<div id="summary-view">
+    <div id="summary-controls">
+        <button id="export-pdf-btn">Exportar PDF</button>
+        <button id="export-jpg-btn">Exportar JPG</button>
+        <button class="danger" onclick="document.getElementById('summary-view').style.display='none'">Cerrar</button>
+    </div>
+    <div id="summary-content"></div>
+</div>
+
 <script>
+    // --- Lógica de Supabase y variables globales (sin cambios) ---
     const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
     let supabaseClient = null;
     let currentUser = null;
     let items = [];
 
+    // --- Todas las funciones hasta la última permanecen intactas ---
     function getSupabase( ) {
         if (supabaseClient) return supabaseClient;
         try { supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); return supabaseClient; } 
@@ -521,14 +569,4 @@
 
     function clearCanvas(idx) { const canvas = document.getElementById(`canvas-${idx}`); if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); } }
 
-    function dataURLtoBlob(dataurl) { const arr = dataurl.split(','); const mime = arr[0].match(/:(.*?);/)[1]; const bstr = atob(arr[1]); let n = bstr.length; const u8arr = new Uint8Array(n); while (n--) u8arr[n] = bstr.charCodeAt(n); return new Blob([u8arr], {type: mime}); }
-
-    function backToDashboard() {
-        document.getElementById('create-folder').classList.add('hidden');
-        document.getElementById('view-folder').classList.add('hidden');
-        document.getElementById('dashboard').classList.remove('hidden');
-        document.getElementById('folders-list').style.display = 'none';
-    }
-</script>
-</body>
-</html>
+    function dataURLtoBlob(dataurl) { const arr = dataurl.split(','); const mime = arr[0].match(/:(.*?);/)[1]; const bstr = atob(arr
