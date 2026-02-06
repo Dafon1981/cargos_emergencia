@@ -52,6 +52,33 @@
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; }
         .modal-content { background: #1a1a1a; margin: auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .modal-content textarea { height: 120px; }
+
+/* --- ¡NUEVO ESTILO PARA EL BOTÓN DE ELIMINAR! --- */
+.delete-item-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #616161;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+}
+.delete-item-btn:hover { background: #757575; }
+
+
+
+        
     </style>
 </head>
 <body>
@@ -193,52 +220,96 @@
     }
 
     function addItemField() {
-        const index = items.length;
-        const div = document.createElement('div');
-        div.className = 'item';
-        div.innerHTML = `<label>Item</label><input type="text" id="item-${index}" required><label>Tipo de Documento</label><input type="text" id="tipo-${index}" required><label>Observación</label><textarea id="obs-${index}" rows="2"></textarea>`;
-        document.getElementById('items-container').appendChild(div);
-        items.push(index);
+    const index = items.length;
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.id = `item-container-${index}`; // Asignamos un ID único al contenedor del item
+    
+    // --- ¡AÑADIMOS EL BOTÓN DE ELIMINAR! ---
+    div.innerHTML = `
+        <button type="button" class="delete-item-btn" onclick="removeItemField(${index})">×</button>
+        <label>Item</label>
+        <input type="text" id="item-${index}" required>
+        <label>Tipo de Documento</label>
+        <input type="text" id="tipo-${index}" required>
+        <label>Observación</label>
+        <textarea id="obs-${index}" rows="2"></textarea>
+    `;
+    document.getElementById('items-container').appendChild(div);
+    items.push(index);
+}
+
+
+// =================================================================
+// --- ¡NUEVA FUNCIÓN!: removeItemField() ---
+// =================================================================
+function removeItemField(indexToRemove) {
+    // Elimina el elemento del DOM
+    const itemContainer = document.getElementById(`item-container-${indexToRemove}`);
+    if (itemContainer) {
+        itemContainer.remove();
     }
 
-    async function createFolderAndItems() {
-        const supabase = getSupabase(); if (!supabase) return;
-        const carpeta = document.getElementById('carpeta').value.trim();
-        if (!carpeta) { alert("El nombre de la carpeta es obligatorio."); return; }
-        if (items.length === 0) { alert("Debe agregar al menos un item."); return; }
+    // Marca el item como 'eliminado' en nuestro array de control
+    // Usamos 'null' para no alterar los índices de los demás items
+    const itemIndexInArray = items.indexOf(indexToRemove);
+    if (itemIndexInArray > -1) {
+        items[itemIndexInArray] = null;
+    }
+}
 
-        const { data: existing, error: checkError } = await supabase
-            .from('firmas_cargos')
-            .select('carpeta')
-            .eq('carpeta', carpeta)
-            .limit(1);
 
-        if (checkError) {
-            alert('Error al verificar la carpeta: ' + checkError.message);
-            return;
-        }
 
-        if (existing && existing.length > 0) {
-            alert(`Error: La carpeta "${carpeta}" ya existe. Por favor, elige otro nombre.`);
-            return;
-        }
 
-        const itemsToInsert = [];
-        for (let i = 0; i < items.length; i++) {
-            const itemCode = document.getElementById(`item-${i}`).value.trim();
-            const tipo = document.getElementById(`tipo-${i}`).value.trim();
-            const obs = document.getElementById(`obs-${i}`).value.trim();
-            if (!itemCode || !tipo) { alert(`Item ${i+1} está incompleto.`); return; }
-            itemsToInsert.push({ carpeta, item: itemCode, tipo_documento: tipo, observacion: obs, created_by: currentUser.id, responsable: currentUser.usuario, estatus: 'pendiente' });
-        }
-        
-        const { error } = await supabase.from('firmas_cargos').insert(itemsToInsert);
-        if (error) { alert('Error al guardar: ' + error.message); return; }
-        
-        alert('Carpeta creada exitosamente');
-        loadFolder(carpeta);
+
+
+    
+ async function createFolderAndItems() {
+    const supabase = getSupabase(); if (!supabase) return;
+    const carpeta = document.getElementById('carpeta').value.trim();
+    
+    // Filtramos los items que no han sido eliminados (no son null)
+    const activeItems = items.filter(i => i !== null);
+
+    if (!carpeta) { alert("El nombre de la carpeta es obligatorio."); return; }
+    if (activeItems.length === 0) { alert("Debe agregar al menos un item."); return; }
+
+    const { data: existing, error: checkError } = await supabase
+        .from('firmas_cargos')
+        .select('carpeta')
+        .eq('carpeta', carpeta)
+        .limit(1);
+
+    if (checkError) {
+        alert('Error al verificar la carpeta: ' + checkError.message);
+        return;
     }
 
+    if (existing && existing.length > 0) {
+        alert(`Error: La carpeta "${carpeta}" ya existe. Por favor, elige otro nombre.`);
+        return;
+    }
+
+    const itemsToInsert = [];
+    // Iteramos solo sobre los items activos
+    for (const itemIndex of activeItems) {
+        const itemCode = document.getElementById(`item-${itemIndex}`).value.trim();
+        const tipo = document.getElementById(`tipo-${itemIndex}`).value.trim();
+        const obs = document.getElementById(`obs-${itemIndex}`).value.trim();
+        if (!itemCode || !tipo) { alert(`Uno de los items está incompleto.`); return; }
+        itemsToInsert.push({ carpeta, item: itemCode, tipo_documento: tipo, observacion: obs, created_by: currentUser.id, responsable: currentUser.usuario, estatus: 'pendiente' });
+    }
+    
+    const { error } = await supabase.from('firmas_cargos').insert(itemsToInsert);
+    if (error) { alert('Error al guardar: ' + error.message); return; }
+    
+    alert('Carpeta creada exitosamente');
+    loadFolder(carpeta);
+}
+
+
+
+    
     async function loadFolders() {
         const supabase = getSupabase(); if (!supabase) return;
         const container = document.getElementById('folders-list');
@@ -484,3 +555,4 @@
 </script>
 </body>
 </html>
+
