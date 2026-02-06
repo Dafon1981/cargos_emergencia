@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Firmas y Cargos v1.8.2 (Nombres OK)</title>
+    <title>Gestión de Firmas y Cargos v1.9 (Firma Mejorada)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     <style>
         /* --- Estilos sin cambios --- */
@@ -298,9 +298,6 @@
         container.appendChild(listContainer);
     }
 
-    // =================================================================
-    // --- FUNCIÓN MODIFICADA: loadFolder() ---
-    // =================================================================
     async function loadFolder(carpeta) {
         const supabase = getSupabase(); if (!supabase) return;
         const { data: items, error } = await supabase.from('firmas_cargos').select('*').eq('carpeta', carpeta).order('item');
@@ -311,14 +308,12 @@
         const firmaRecepcionUrl = primerItem.firma_recepcion_url;
         const firmaReceptorUrl = primerItem.firma_receptor_url;
         
-        // Leemos los nombres de los firmantes de la base de datos
         const nombreRecepcion = primerItem.nombre_recepcion || '';
         const nombreReceptor = primerItem.nombre_receptor || '';
 
         const isCompleted = !!(firmaRecepcionUrl && firmaReceptorUrl);
 
         const headerContainer = document.getElementById('folder-info-header');
-        // Mostramos los nombres en el HTML
         headerContainer.innerHTML = `
             <div class="folder-info">
                 <h2>Carpeta: <span style="color:#d4af37;">${carpeta}</span></h2>
@@ -401,9 +396,6 @@
         }
     }
 
-    // =================================================================
-    // --- FUNCIÓN MODIFICADA: saveFolderSignature() ---
-    // =================================================================
     async function saveFolderSignature(carpeta, role) {
         const supabase = getSupabase(); if (!supabase) return;
         const canvas = document.getElementById('canvas-folder'); if (!canvas) return;
@@ -417,18 +409,16 @@
         const publicUrl = urlData.publicUrl;
         
         const updateData = {};
-        // --- ¡CORRECCIÓN DEFINITIVA! Guardamos el nombre del usuario actual al firmar ---
         if (role === 'recepcion') {
             updateData.firma_recepcion_url = publicUrl;
             updateData.signed_by_recepcion = currentUser.id;
-            updateData.nombre_recepcion = currentUser.usuario; // <-- AÑADIDO Y CORRECTO
+            updateData.nombre_recepcion = currentUser.usuario;
         } else {
             updateData.firma_receptor_url = publicUrl;
             updateData.signed_by_receptor = currentUser.id;
-            updateData.nombre_receptor = currentUser.usuario; // <-- AÑADIDO Y CORRECTO
+            updateData.nombre_receptor = currentUser.usuario;
         }
         
-        // --- Lógica para actualizar el estatus ---
         const { data: primerItem } = await supabase.from('firmas_cargos').select('firma_receptor_url, firma_recepcion_url').eq('carpeta', carpeta).limit(1).single();
         if (primerItem) {
             const bothSigned = (updateData.firma_recepcion_url && primerItem.firma_receptor_url) || (updateData.firma_receptor_url && primerItem.firma_recepcion_url);
@@ -440,9 +430,7 @@
         else { alert('Firma guardada exitosamente'); loadFolder(carpeta); }
     }
 
-
-    
- function initCanvas(idx) {
+    function initCanvas(idx) {
         const canvas = document.getElementById(`canvas-${idx}`); if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const dpr = window.devicePixelRatio || 1;
@@ -451,8 +439,6 @@
         ctx.strokeStyle = '#000000'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         
         let isDrawing = false; let lastX = 0; let lastY = 0; let lastTime = 0; 
-        
-        // --- ¡AJUSTE! El grosor inicial ahora es más alto ---
         let lastLineWidth = 3.5; 
 
         function getPosition(e) { const rect = canvas.getBoundingClientRect(); return { x: (e.clientX || e.touches[0].clientX) - rect.left, y: (e.clientY || e.touches[0].clientY) - rect.top }; }
@@ -463,11 +449,9 @@
             const distance = Math.sqrt(Math.pow(pos.x - lastX, 2) + Math.pow(pos.y - lastY, 2));
             const velocity = distance / timeDiff;
             
-            // --- ¡AJUSTE! El rango de grosor ahora es mayor (más grueso en general) ---
-            // El mínimo es 2.0 y el máximo es 7.0
             const lineWidth = Math.max(2.0, Math.min(7.0, 7.0 - velocity * 2.0)); 
             
-            ctx.lineWidth = (lineWidth + lastLineWidth) / 2; // Suavizado
+            ctx.lineWidth = (lineWidth + lastLineWidth) / 2;
             ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
             [lastX, lastY, lastTime, lastLineWidth] = [pos.x, pos.y, currentTime, lineWidth];
         }
@@ -475,8 +459,6 @@
         function startDrawing(e) {
             e.preventDefault(); isDrawing = true; const pos = getPosition(e);
             [lastX, lastY] = [pos.x, pos.y]; lastTime = Date.now(); 
-            
-            // --- ¡AJUSTE! El grosor inicial también es mayor ---
             lastLineWidth = 3.5; 
             
             ctx.beginPath(); ctx.arc(pos.x, pos.y, lastLineWidth / 2, 0, Math.PI * 2); ctx.fillStyle = '#000000'; ctx.fill();
@@ -490,8 +472,6 @@
         canvas.addEventListener('touchend', stopDrawing); canvas.addEventListener('touchcancel', stopDrawing);
     }
 
-
-    
     function clearCanvas(idx) { const canvas = document.getElementById(`canvas-${idx}`); if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); } }
 
     function dataURLtoBlob(dataurl) { const arr = dataurl.split(','); const mime = arr[0].match(/:(.*?);/)[1]; const bstr = atob(arr[1]); let n = bstr.length; const u8arr = new Uint8Array(n); while (n--) u8arr[n] = bstr.charCodeAt(n); return new Blob([u8arr], {type: mime}); }
@@ -505,4 +485,3 @@
 </script>
 </body>
 </html>
-
