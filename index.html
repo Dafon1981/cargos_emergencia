@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Firmas y Cargos v2.1 (Resumen)</title>
+    <title>Gestión de Firmas y Cargos v2.2 (Final)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
-    <!-- ¡NUEVAS LIBRERÍAS PARA EXPORTAR! -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        /* --- Estilos existentes sin cambios --- */
+        /* --- Estilos Finales y Completos --- */
         * { margin:0; padding:0; box-sizing:border-box; }
         html { height: 100%; }
         body {
@@ -56,48 +55,10 @@
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; }
         .modal-content { background: #1a1a1a; margin: auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .modal-content textarea { height: 120px; }
-        .delete-item-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #616161;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 0;
-            margin: 0;
-            line-height: 1;
-        }
+        .delete-item-btn { position: absolute; top: 10px; right: 10px; background: #616161; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; line-height: 1; }
         .delete-item-btn:hover { background: #757575; }
-
-        /* --- ¡NUEVOS ESTILOS PARA EL RESUMEN! --- */
-        #summary-view {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 2000;
-            overflow-y: auto;
-            padding: 20px;
-        }
-        .summary-page {
-            background: white;
-            width: 210mm;
-            min-height: 297mm;
-            padding: 20mm;
-            margin: 20px auto;
-            color: #333;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
-        }
+        #summary-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; overflow-y: auto; padding: 20px; }
+        .summary-page { background: white; width: 210mm; min-height: 297mm; padding: 20mm; margin: 20px auto; color: #333; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
         .summary-page h1 { color: #333; text-align: center; }
         .summary-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 20px; }
         .summary-table th, .summary-table td { border: 1px solid #ccc; padding: 6px; text-align: left; vertical-align: middle; }
@@ -131,7 +92,6 @@
             <div class="buttons">
                 <button onclick="showCreateFolder()">Crear Nueva Carpeta</button>
                 <button onclick="loadFolders()">Consultar Carpetas</button>
-                <!-- ¡NUEVO BOTÓN! -->
                 <button class="secondary" onclick="generateSummary()">Resumen</button>
                 <button class="danger" onclick="handleLogout()">Cerrar Sesión</button>
             </div>
@@ -175,7 +135,6 @@
     </div>
 </div>
 
-<!-- ¡NUEVA VISTA PARA EL RESUMEN! -->
 <div id="summary-view">
     <div id="summary-controls">
         <button id="export-pdf-btn">Exportar PDF</button>
@@ -186,14 +145,12 @@
 </div>
 
 <script>
-    // --- Lógica de Supabase y variables globales (sin cambios) ---
     const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
     let supabaseClient = null;
     let currentUser = null;
     let items = [];
 
-    // --- Todas las funciones hasta la última permanecen intactas ---
     function getSupabase( ) {
         if (supabaseClient) return supabaseClient;
         try { supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); return supabaseClient; } 
@@ -569,4 +526,176 @@
 
     function clearCanvas(idx) { const canvas = document.getElementById(`canvas-${idx}`); if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); } }
 
-    function dataURLtoBlob(dataurl) { const arr = dataurl.split(','); const mime = arr[0].match(/:(.*?);/)[1]; const bstr = atob(arr
+    function dataURLtoBlob(dataurl) {
+        const arr = dataurl.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) u8arr[n] = bstr.charCodeAt(n);
+        return new Blob([u8arr], {type: mime});
+    }
+
+    function backToDashboard() {
+        document.getElementById('create-folder').classList.add('hidden');
+        document.getElementById('view-folder').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        
+
+
+
+  
+
+    // =================================================================
+    // --- ¡NUEVA LÓGICA PARA EL MÓDULO DE RESUMEN! ---
+    // =================================================================
+    async function generateSummary() {
+        const supabase = getSupabase(); if (!supabase) return;
+        const summaryView = document.getElementById('summary-view');
+        const summaryContent = document.getElementById('summary-content');
+        
+        summaryContent.innerHTML = '<h2>Generando resumen, por favor espera...</h2>';
+        summaryView.style.display = 'flex';
+
+        try {
+            const { data, error } = await supabase
+                .from('firmas_cargos')
+                .select('*')
+                .order('fecha', { ascending: false });
+
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                summaryContent.innerHTML = '<h2>No hay datos para mostrar en el resumen.</h2>';
+                return;
+            }
+
+            // Agrupar items por carpeta
+            const folders = data.reduce((acc, item) => {
+                if (!acc[item.carpeta]) {
+                    acc[item.carpeta] = [];
+                }
+                acc[item.carpeta].push(item);
+                return acc;
+            }, {});
+
+            let allPagesHTML = '';
+            const itemsPerPage = 10;
+            let globalItemCounter = 1;
+
+            // Ordenar carpetas por la fecha más reciente dentro de cada una
+            const sortedFolders = Object.keys(folders).sort((a, b) => {
+                const dateA = new Date(folders[a][0].fecha);
+                const dateB = new Date(folders[b][0].fecha);
+                return dateB - dateA;
+            });
+
+            for (const folderName of sortedFolders) {
+                const itemsInFolder = folders[folderName];
+                const totalItems = itemsInFolder.length;
+                const primerItem = itemsInFolder[0];
+                let itemsProcessed = 0;
+
+                while (itemsProcessed < totalItems) {
+                    let pageHTML = '<div class="summary-page">';
+                    pageHTML += `<h1>Resumen de Cargos</h1>`;
+                    pageHTML += `<table class="summary-table">`;
+                    pageHTML += `
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Carpeta</th>
+                                <th>Item</th>
+                                <th>Fecha Creación</th>
+                                <th>Firma Recepción</th>
+                                <th>Firma Receptor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    `;
+                    
+                    let itemsOnThisPage = 0;
+                    while (itemsProcessed < totalItems && itemsOnThisPage < itemsPerPage) {
+                        const item = itemsInFolder[itemsProcessed];
+                        const fechaCreacion = new Date(item.fecha).toLocaleDateString('es-ES');
+                        
+                        const firmaRecepcionHTML = item.firma_recepcion_url 
+                            ? `<div class="signer-info"><img src="${item.firma_recepcion_url}" alt="Firma"><span class="signer-name">${item.nombre_recepcion || ''}</span></div>` 
+                            : 'Pendiente';
+                        
+                        const firmaReceptorHTML = item.firma_receptor_url 
+                            ? `<div class="signer-info"><img src="${item.firma_receptor_url}" alt="Firma"><span class="signer-name">${item.nombre_receptor || ''}</span></div>` 
+                            : 'Pendiente';
+
+                        pageHTML += `
+                            <tr>
+                                <td>${globalItemCounter}</td>
+                                <td>${item.carpeta}</td>
+                                <td>${item.item}</td>
+                                <td>${fechaCreacion}</td>
+                                <td>${firmaRecepcionHTML}</td>
+                                <td>${firmaReceptorHTML}</td>
+                            </tr>
+                        `;
+                        itemsProcessed++;
+                        itemsOnThisPage++;
+                        globalItemCounter++;
+                    }
+
+                    pageHTML += `</tbody></table></div>`;
+                    allPagesHTML += pageHTML;
+                }
+            }
+
+            summaryContent.innerHTML = allPagesHTML;
+
+        } catch (err) {
+            summaryContent.innerHTML = `<h2>Error al generar el resumen: ${err.message}</h2>`;
+        }
+    }
+
+    // --- Lógica para los botones de exportación ---
+    document.getElementById('export-pdf-btn').addEventListener('click', () => {
+        const { jsPDF } = window.jspdf;
+        const pages = document.querySelectorAll('.summary-page');
+        if (pages.length === 0) return alert('No hay nada que exportar.');
+
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const promises = [];
+
+        pages.forEach(page => {
+            promises.push(html2canvas(page, { scale: 2 }));
+        });
+
+        Promise.all(promises).then(canvases => {
+            canvases.forEach((canvas, index) => {
+                if (index > 0) {
+                    pdf.addPage();
+                }
+                const imgData = canvas.toDataURL('image/png');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            });
+            pdf.save('resumen_cargos.pdf');
+        });
+    });
+
+    document.getElementById('export-jpg-btn').addEventListener('click', () => {
+        const summaryContent = document.getElementById('summary-content');
+        if (!summaryContent.hasChildNodes()) return alert('No hay nada que exportar.');
+
+        html2canvas(summaryContent, { scale: 2, windowWidth: summaryContent.scrollWidth, windowHeight: summaryContent.scrollHeight }).then(canvas => {
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/jpeg', 0.9);
+            link.download = 'resumen_cargos.jpg';
+            link.click();
+        });
+    });
+
+</script>
+</body>
+</html>
+
+
+    
