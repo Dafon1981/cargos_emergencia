@@ -377,6 +377,8 @@
         const isCompleted = !!(firmaRecepcionUrl && firmaReceptorUrl);
 
         const headerContainer = document.getElementById('folder-info-header');
+        
+                // Mostramos los nombres en el HTML
         headerContainer.innerHTML = `
             <div class="folder-info">
                 <h2>Carpeta: <span style="color:#d4af37;">${carpeta}</span></h2>
@@ -385,15 +387,16 @@
                     <div class="signature-box">
                         <h5>Firma Recepción</h5>
                         <div class="signer-name">${nombreRecepcion}</div>
-                        ${firmaRecepcionUrl ? `<img src="${firmaRecepcionUrl}">` : '<p>Pendiente</p>'}
+                        ${firmaRecepcionUrl ? `<img src="${firmaRecepcionUrl}" crossorigin="anonymous">` : '<p>Pendiente</p>'}
                     </div>
                     <div class="signature-box">
                         <h5>Firma Receptor</h5>
                         <div class="signer-name">${nombreReceptor}</div>
-                        ${firmaReceptorUrl ? `<img src="${firmaReceptorUrl}">` : '<p>Pendiente</p>'}
+                        ${firmaReceptorUrl ? `<img src="${firmaReceptorUrl}" crossorigin="anonymous">` : '<p>Pendiente</p>'}
                     </div>
                 </div>
             </div>`;
+
         
         const signatureContainer = document.getElementById('signature-section');
         const isCreator = primerItem.created_by === currentUser.id;
@@ -645,13 +648,14 @@
 
                 const fechaCreacion = new Date(folderData.fecha).toLocaleDateString('es-ES');
                 
-                const firmaRecepcionHTML = folderData.firma_recepcion_url 
-                    ? `<div class="signer-info"><img src="${folderData.firma_recepcion_url}" alt="Firma"><span class="signer-name">${folderData.nombre_recepcion || ''}</span></div>` 
+                              const firmaRecepcionHTML = folderData.firma_recepcion_url 
+                    ? `<div class="signer-info"><img src="${folderData.firma_recepcion_url}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_recepcion || ''}</span></div>` 
                     : 'Pendiente';
                 
                 const firmaReceptorHTML = folderData.firma_receptor_url 
-                    ? `<div class="signer-info"><img src="${folderData.firma_receptor_url}" alt="Firma"><span class="signer-name">${folderData.nombre_receptor || ''}</span></div>` 
+                    ? `<div class="signer-info"><img src="${folderData.firma_receptor_url}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_receptor || ''}</span></div>` 
                     : 'Pendiente';
+
 
                 currentPageHTML += `
                     <tr>
@@ -726,3 +730,4 @@
 
 
     
+
