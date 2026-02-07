@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Firmas y Cargos v2.3 (Resumen Estable)</title>
+    <title>Gestión de Firmas y Cargos v2.2 (Filtro JS Estable)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
-    <!-- Librerías para exportar el resumen -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        /* --- Estilos Finales y Completos (Incluyendo los del Resumen ) --- */
+        /* --- Estilos Completos y Corregidos --- */
         * { margin:0; padding:0; box-sizing:border-box; }
         html { height: 100%; }
         body {
@@ -21,9 +20,8 @@
         }
         .container { width: 100%; max-width: 960px; margin: 0 auto; padding: 1rem; }
         h1, h2, h3, h4 { color: #d4af37; margin-bottom: 1rem; }
-        .card { background: #1a1a1a; border-radius: 12px; padding: 2.5rem; box-shadow: 0 8px 30px rgba(0,0,0,0.6); margin: 1.5rem 0; }
-        input, textarea, select {
- width: 100%; padding: 12px; margin: 10px 0; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: #e0e0e0; font-size: 1rem; }
+        .card { background: #1a1a1a; border-radius: 12px; padding: 2.5rem; box-shadow: 0 8px 30px rgba(0,0,0,0.6  ); margin: 1.5rem 0; }
+        input, textarea, select { width: 100%; padding: 12px; margin: 10px 0; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: #e0e0e0; font-size: 1rem; }
         button {
             background: #d4af37; color: #0f0f0f; border: none;
             padding: 14px 28px; margin: 8px 4px; border-radius: 8px;
@@ -37,8 +35,9 @@
         button.danger:hover { background: #c62828; }
         .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; width: 100%; }
         .hidden { display: none !important; }
-        .item { background: #222; padding: 1.5rem; border-radius: 10px; margin: 1.5rem 0; border-left: 4px solid #d4af37; transition: background-color 0.2s; position: relative; }
+        .item { background: #222; padding: 1.5rem; border-radius: 10px; margin: 1.5rem 0; border-left: 4px solid #d4af37; position: relative; }
         .item.editable:hover { background-color: #333; cursor: pointer; }
+        .delete-item-btn { position: absolute; top: 10px; right: 10px; background: #555; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 16px; line-height: 28px; text-align: center; cursor: pointer; padding: 0; min-width: 28px; max-width: 28px; }
         .flex-center { display: flex; justify-content: center; align-items: center; flex-direction: column; }
         #mensaje { margin-top: 1rem; font-weight: bold; }
         canvas { border: 2px solid #444; background: #f8f8f8; border-radius: 8px; margin: 12px 0; touch-action: none; width: 100%; max-width: 500px; height: 280px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.1); }
@@ -57,55 +56,26 @@
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; }
         .modal-content { background: #1a1a1a; margin: auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .modal-content textarea { height: 120px; }
-        .delete-item-btn { position: absolute; top: 10px; right: 10px; background: #616161; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; padding: 0; margin: 0; line-height: 1; }
-        .delete-item-btn:hover { background: #757575; }
-        
-        /* --- NUEVOS ESTILOS PARA EL RESUMEN --- */
-        #summary-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; overflow-y: auto; padding: 20px; }
-        .summary-page { background: white; width: 210mm; min-height: 297mm; padding: 20mm; margin: 20px auto; color: #333; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
-        .summary-page h1 { color: #333; text-align: center; }
-        .summary-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-top: 20px; }
-        .summary-table th, .summary-table td { border: 1px solid #ccc; padding: 6px; text-align: left; vertical-align: middle; }
+        .summary-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; flex-direction: column; }
+        .summary-toolbar { background: #1a1a1a; padding: 15px; text-align: center; }
+        .summary-container { flex-grow: 1; overflow: auto; padding: 20px; }
+        .summary-page { background: white; color: black; width: 210mm; min-height: 297mm; padding: 20mm; margin: 20px auto; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
+        .summary-table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+        .summary-table th, .summary-table td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: middle; }
         .summary-table th { background: #f2f2f2; }
-        .summary-table img { max-height: 30px; vertical-align: middle; background: #fff; }
-        .summary-table .signer-info { display: flex; align-items: center; gap: 8px; }
-        .summary-table .signer-name { font-size: 8pt; color: #555; }
-        .page-break { page-break-after: always; }
-        #summary-controls { position: fixed; top: 20px; right: 20px; z-index: 2001; }
-
-
-
-.filter-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    align-items: flex-end;
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid #333;
-}
-.filter-controls > div {
-    flex-grow: 1;
-}
-.filter-controls label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 0.9rem;
-    color: #aaa;
-}
-.filter-controls button {
-    flex-grow: 0;
-    padding: 12px 24px;
-    margin-bottom: 10px; /* Alinea con los inputs */
-}
-
-        
+        .summary-table img { max-height: 40px; vertical-align: middle; }
+        .signer-info { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .signer-name { font-size: 8pt; font-weight: normal; }
+        .filter-controls { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #333; }
+        .filter-controls > div { flex-grow: 1; }
+        .filter-controls label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #aaa; }
+        .filter-controls button { flex-grow: 0; padding: 12px 24px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- HTML del Login (Estable) -->
+    <!-- Login Section -->
     <div id="login-section" class="card flex-center">
         <h1>Iniciar Sesión</h1>
         <form id="login-form" style="width:100%; max-width:420px;">
@@ -113,54 +83,49 @@
             <input type="text" id="usuario" required placeholder="Ej: Manuel">
             <label for="clave">Contraseña</label>
             <input type="text" id="clave" required placeholder="Ej: mutter">
-            <div class="buttons">
-                <button type="button" onclick="handleLogin()">Iniciar Sesión</button>
-            </div>
+            <div class="buttons"><button type="button" onclick="handleLogin()">Iniciar Sesión</button></div>
             <div id="mensaje" style="color: #ff9800;"></div>
         </form>
     </div>
-    
-    <!-- HTML del Dashboard (con el nuevo botón de Resumen) -->
+
+    <!-- Dashboard Section -->
     <div id="dashboard" class="hidden">
         <div class="card flex-center">
             <h1>Bienvenido, <span id="username" style="color:#d4af37;"></span></h1>
             <div class="buttons">
                 <button onclick="showCreateFolder()">Crear Nueva Carpeta</button>
-                <button onclick="loadFolders()">Consultar Carpetas</button>
+                <button onclick="showFolderFilter()">Consultar Carpetas</button>
                 <button class="secondary" onclick="generateSummary()">Resumen</button>
                 <button class="danger" onclick="handleLogout()">Cerrar Sesión</button>
             </div>
         </div>
         <div id="folders-list" class="card" style="display:none;">
-    <h3>Filtros de Búsqueda</h3>
-    <div class="filter-controls">
-        <div>
-            <label for="filter-tipo">Tipo de Documento</label>
-            <select id="filter-tipo">
-                <option value="">-- Todos --</option>
-                <option value="Cargos de Emergencia">Cargos de Emergencia</option>
-                <option value="Documentos">Documentos</option>
-                <option value="Otros">Otros</option>
-            </select>
+            <h3>Filtros de Búsqueda</h3>
+            <div class="filter-controls">
+                <div>
+                    <label for="filter-tipo">Tipo de Documento</label>
+                    <select id="filter-tipo">
+                        <option value="">-- Todos --</option>
+                        <option value="Cargos de Emergencia">Cargos de Emergencia</option>
+                        <option value="Documentos">Documentos</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="filter-fecha-inicio">Desde</label>
+                    <input type="date" id="filter-fecha-inicio">
+                </div>
+                <div>
+                    <label for="filter-fecha-fin">Hasta</label>
+                    <input type="date" id="filter-fecha-fin">
+                </div>
+                <button onclick="loadFolders()">Buscar</button>
+            </div>
+            <div id="folders-list-results"></div>
         </div>
-        <div>
-            <label for="filter-fecha-inicio">Desde</label>
-            <input type="date" id="filter-fecha-inicio">
-        </div>
-        <div>
-            <label for="filter-fecha-fin">Hasta</label>
-            <input type="date" id="filter-fecha-fin">
-        </div>
-        <button onclick="loadFolders()">Buscar</button>
     </div>
-    <div id="folders-list-results">
-        <!-- Los resultados de la búsqueda aparecerán aquí -->
-    </div>
-</div>
 
-    </div>
-    
-    <!-- Resto del HTML (sin cambios) -->
+    <!-- Create Folder Section -->
     <div id="create-folder" class="hidden">
         <div class="card">
             <h2>Crear Nueva Carpeta</h2>
@@ -175,17 +140,19 @@
             </div>
         </div>
     </div>
+
+    <!-- View Folder Section -->
     <div id="view-folder" class="hidden">
         <div class="card">
             <div id="folder-info-header"></div>
             <div id="signature-section"></div>
             <h3 style="margin-top: 2rem; border-top: 1px solid #444; padding-top: 2rem;">Items en esta Carpeta</h3>
             <div id="items-view"></div>
-            <div class="buttons" style="margin-top: 2rem;">
-                <button class="secondary" onclick="backToDashboard()">Volver al inicio</button>
-            </div>
+            <div class="buttons" style="margin-top: 2rem;"><button class="secondary" onclick="backToDashboard()">Volver al inicio</button></div>
         </div>
     </div>
+
+    <!-- Observation Modal -->
     <div id="observation-modal" class="modal">
         <div class="modal-content">
             <h2>Editar Observación</h2>
@@ -196,28 +163,28 @@
             </div>
         </div>
     </div>
-</div>
 
-<!-- NUEVO HTML para la vista de Resumen -->
-<div id="summary-view">
-    <div id="summary-controls">
-        <button id="export-pdf-btn">Exportar PDF</button>
-        <button id="export-jpg-btn">Exportar JPG</button>
-        <button class="danger" onclick="document.getElementById('summary-view').style.display='none'">Cerrar</button>
+    <!-- Summary View -->
+    <div id="summary-view" class="summary-view">
+        <div class="summary-toolbar">
+            <button id="export-pdf-btn">Exportar a PDF</button>
+            <button id="export-jpg-btn">Exportar a JPG</button>
+            <button class="secondary" onclick="document.getElementById('summary-view').style.display='none'">Cerrar</button>
+        </div>
+        <div class="summary-container" id="summary-content"></div>
     </div>
-    <div id="summary-content"></div>
 </div>
 
 <script>
+    // --- CÓDIGO JAVASCRIPT COMPLETO ---
     const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
     let supabaseClient = null;
     let currentUser = null;
     let items = [];
+    let itemCounter = 0;
 
-    // --- TODO EL JAVASCRIPT ESTABLE (HASTA LA LÓGICA DE RESUMEN ) ---
-    
-    function getSupabase() {
+    function getSupabase( ) {
         if (supabaseClient) return supabaseClient;
         try { supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); return supabaseClient; } 
         catch (err) { console.error("Error inicializando Supabase:", err); return null; }
@@ -226,16 +193,9 @@
     window.onload = () => {
         const stored = localStorage.getItem('currentUser');
         if (stored) {
-            try {
-                currentUser = JSON.parse(stored);
-                showDashboard();
-            } catch (e) {
-                localStorage.removeItem('currentUser');
-                showLogin();
-            }
-        } else {
-            showLogin();
-        }
+            try { currentUser = JSON.parse(stored); showDashboard(); } 
+            catch (e) { localStorage.removeItem('currentUser'); showLogin(); }
+        } else { showLogin(); }
     };
 
     function showLogin() {
@@ -279,157 +239,72 @@
 
     function showCreateFolder() {
         items = [];
+        itemCounter = 0;
         document.getElementById('items-container').innerHTML = '';
         document.getElementById('dashboard').classList.add('hidden');
         document.getElementById('create-folder').classList.remove('hidden');
     }
 
     function addItemField() {
-        const index = items.length;
+        const index = itemCounter++;
         const div = document.createElement('div');
         div.className = 'item';
-        div.id = `item-container-${index}`;
-        
-                div.innerHTML = `
+        div.id = `item-field-${index}`;
+        div.innerHTML = `
             <button type="button" class="delete-item-btn" onclick="removeItemField(${index})">×</button>
-            <label>Item</label>
-            <input type="text" id="item-${index}" required>
+            <label>Item</label><input type="text" id="item-${index}" required>
             <label>Tipo de Documento</label>
             <select id="tipo-${index}" required>
                 <option value="Cargos de Emergencia">Cargos de Emergencia</option>
                 <option value="Documentos">Documentos</option>
                 <option value="Otros">Otros</option>
             </select>
-            <label>Observación</label>
-            <textarea id="obs-${index}" rows="2"></textarea>
-        `;
-
-
-        
+            <label>Observación</label><textarea id="obs-${index}" rows="2"></textarea>`;
         document.getElementById('items-container').appendChild(div);
         items.push(index);
     }
 
-    function removeItemField(indexToRemove) {
-        const itemContainer = document.getElementById(`item-container-${indexToRemove}`);
-        if (itemContainer) {
-            itemContainer.remove();
-        }
-        const itemIndexInArray = items.indexOf(indexToRemove);
-        if (itemIndexInArray > -1) {
-            items[itemIndexInArray] = null;
-        }
+    function removeItemField(index) {
+        const itemToRemove = document.getElementById(`item-field-${index}`);
+        if (itemToRemove) itemToRemove.remove();
+        items = items.filter(i => i !== index);
     }
 
     async function createFolderAndItems() {
         const supabase = getSupabase(); if (!supabase) return;
         const carpeta = document.getElementById('carpeta').value.trim();
-        const activeItems = items.filter(i => i !== null);
-
         if (!carpeta) { alert("El nombre de la carpeta es obligatorio."); return; }
-        if (activeItems.length === 0) { alert("Debe agregar al menos un item."); return; }
-
-        const { data: existing, error: checkError } = await supabase
-            .from('firmas_cargos')
-            .select('carpeta')
-            .eq('carpeta', carpeta)
-            .limit(1);
-
-        if (checkError) {
-            alert('Error al verificar la carpeta: ' + checkError.message);
-            return;
-        }
-
-        if (existing && existing.length > 0) {
-            alert(`Error: La carpeta "${carpeta}" ya existe. Por favor, elige otro nombre.`);
-            return;
-        }
-
+        if (items.length === 0) { alert("Debe agregar al menos un item."); return; }
+        const { data: existing } = await supabase.from('firmas_cargos').select('carpeta').eq('carpeta', carpeta).limit(1);
+        if (existing && existing.length > 0) { alert(`Error: La carpeta "${carpeta}" ya existe.`); return; }
         const itemsToInsert = [];
-        for (const itemIndex of activeItems) {
-            const itemCode = document.getElementById(`item-${itemIndex}`).value.trim();
-            const tipo = document.getElementById(`tipo-${itemIndex}`).value.trim();
-            const obs = document.getElementById(`obs-${itemIndex}`).value.trim();
+        for (const index of items) {
+            const itemCode = document.getElementById(`item-${index}`).value.trim();
+            const tipo = document.getElementById(`tipo-${index}`).value.trim();
+            const obs = document.getElementById(`obs-${index}`).value.trim();
             if (!itemCode || !tipo) { alert(`Uno de los items está incompleto.`); return; }
             itemsToInsert.push({ carpeta, item: itemCode, tipo_documento: tipo, observacion: obs, created_by: currentUser.id, responsable: currentUser.usuario, estatus: 'pendiente' });
         }
-        
-        if (itemsToInsert.length === 0) {
-            alert("No hay items válidos para guardar.");
-            return;
-        }
-        
         const { error } = await supabase.from('firmas_cargos').insert(itemsToInsert);
         if (error) { alert('Error al guardar: ' + error.message); return; }
-        
         alert('Carpeta creada exitosamente');
         loadFolder(carpeta);
     }
 
-
-
-    
-  async function loadFolders() {
-    const supabase = getSupabase(); if (!supabase) return;
-    const container = document.getElementById('folders-list');
-    const resultsContainer = document.getElementById('folders-list-results');
-    
-    container.style.display = 'block';
-    resultsContainer.innerHTML = '<h3>Cargando carpetas...</h3>';
-
-    // Leer valores de los filtros
-    const tipoFiltro = document.getElementById('filter-tipo').value || null;
-    const fechaInicio = document.getElementById('filter-fecha-inicio').value || null;
-    const fechaFin = document.getElementById('filter-fecha-fin').value || null;
-
-    // Llamar a la nueva función RPC de Supabase
-    const { data: carpetasInfo, error } = await supabase.rpc('filtrar_carpetas', {
-        tipo_filtro: tipoFiltro,
-        fecha_inicio: fechaInicio,
-        fecha_fin: fechaFin
-    });
-
-    if (error) {
-        resultsContainer.innerHTML = `<p style="color:red;">Error al cargar carpetas: ${error.message}</p>`;
-        return;
+    function showFolderFilter() {
+        document.getElementById('folders-list').style.display = 'block';
+        loadFolders();
     }
-    
-    resultsContainer.innerHTML = '<h3>Carpetas Disponibles</h3>';
-    if (!carpetasInfo || carpetasInfo.length === 0) {
-        resultsContainer.innerHTML += '<p>No se encontraron carpetas con esos criterios.</p>';
-        return;
-    }
-    
-    const listContainer = document.createElement('div');
-    listContainer.className = 'folder-list-container';
-    
-    carpetasInfo.forEach(info => {
-        const listItem = document.createElement('div');
-        listItem.className = 'folder-list-item';
-        listItem.onclick = () => loadFolder(info.carpeta);
 
-        const folderName = document.createElement('span');
-        folderName.className = 'folder-name';
-        folderName.textContent = info.carpeta;
-
-        const folderDate = document.createElement('span');
-        folderDate.className = 'folder-date';
-        const fecha = new Date(info.fecha);
-        folderDate.textContent = fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-        listItem.appendChild(folderName);
-        listItem.appendChild(folderDate);
-        listContainer.appendChild(listItem);
-    });
-    
-    resultsContainer.appendChild(listContainer);
-}
+    // =================================================================
+    // --- FUNCIÓN MODIFICADA: loadFolders() con filtro en JS ---
+    // =================================================================
 
 
 
 
-    
-    async function loadFolder(carpeta) {
+
+        async function loadFolder(carpeta) {
         const supabase = getSupabase(); if (!supabase) return;
         const { data: items, error } = await supabase.from('firmas_cargos').select('*').eq('carpeta', carpeta).order('item');
         if (error || items.length === 0) { alert('Error o carpeta vacía.'); return; }
@@ -438,17 +313,11 @@
         const responsable = primerItem.responsable || 'N/A';
         const firmaRecepcionUrl = primerItem.firma_recepcion_url;
         const firmaReceptorUrl = primerItem.firma_receptor_url;
-        
         const nombreRecepcion = primerItem.nombre_recepcion || '';
         const nombreReceptor = primerItem.nombre_receptor || '';
-
         const isCompleted = !!(firmaRecepcionUrl && firmaReceptorUrl);
 
         const headerContainer = document.getElementById('folder-info-header');
-        
-                // Mostramos los nombres en el HTML
-                // Mostramos los nombres en el HTML
-         // Mostramos los nombres en el HTML
         headerContainer.innerHTML = `
             <div class="folder-info">
                 <h2>Carpeta: <span style="color:#d4af37;">${carpeta}</span></h2>
@@ -466,8 +335,6 @@
                     </div>
                 </div>
             </div>`;
-
-
         
         const signatureContainer = document.getElementById('signature-section');
         const isCreator = primerItem.created_by === currentUser.id;
@@ -502,10 +369,8 @@
         const modal = document.getElementById('observation-modal');
         const textarea = document.getElementById('observation-text');
         const saveBtn = document.getElementById('save-observation-btn');
-
         textarea.value = currentObservation;
         saveBtn.onclick = () => saveObservation(itemId);
-        
         modal.style.display = 'flex';
     }
 
@@ -516,19 +381,11 @@
     async function saveObservation(itemId) {
         const supabase = getSupabase(); if (!supabase) return;
         const newObservation = document.getElementById('observation-text').value.trim();
-
-        const { error } = await supabase
-            .from('firmas_cargos')
-            .update({ observacion: newObservation })
-            .eq('id', itemId);
-
-        if (error) {
-            alert('Error al guardar la observación: ' + error.message);
-        } else {
+        const { error } = await supabase.from('firmas_cargos').update({ observacion: newObservation }).eq('id', itemId);
+        if (error) { alert('Error al guardar la observación: ' + error.message); } 
+        else {
             const obsDisplay = document.getElementById(`obs-display-${itemId}`);
-            if (obsDisplay) {
-                obsDisplay.textContent = newObservation || '—';
-            }
+            if (obsDisplay) obsDisplay.textContent = newObservation || '—';
             closeObservationModal();
         }
     }
@@ -538,13 +395,10 @@
         const canvas = document.getElementById('canvas-folder'); if (!canvas) return;
         const dataURL = canvas.toDataURL('image/png'); const blob = dataURLtoBlob(dataURL);
         const path = `${carpeta}/_folder_${role}_${Date.now()}.png`;
-        
         const { error: uploadErr } = await supabase.storage.from('firma_cargos').upload(path, blob, { contentType: 'image/png' });
         if (uploadErr) { alert('Error al subir firma: ' + uploadErr.message); return; }
-        
         const { data: urlData } = supabase.storage.from('firma_cargos').getPublicUrl(path);
         const publicUrl = urlData.publicUrl;
-        
         const updateData = {};
         if (role === 'recepcion') {
             updateData.firma_recepcion_url = publicUrl;
@@ -555,13 +409,11 @@
             updateData.signed_by_receptor = currentUser.id;
             updateData.nombre_receptor = currentUser.usuario;
         }
-        
         const { data: primerItem } = await supabase.from('firmas_cargos').select('firma_receptor_url, firma_recepcion_url').eq('carpeta', carpeta).limit(1).single();
         if (primerItem) {
             const bothSigned = (updateData.firma_recepcion_url && primerItem.firma_receptor_url) || (updateData.firma_receptor_url && primerItem.firma_recepcion_url);
             updateData.estatus = bothSigned ? 'completado' : 'firmado_parcial';
         }
-        
         const { error } = await supabase.from('firmas_cargos').update(updateData).eq('carpeta', carpeta);
         if (error) { alert('Error al actualizar carpeta: ' + error.message); } 
         else { alert('Firma guardada exitosamente'); loadFolder(carpeta); }
@@ -574,35 +426,24 @@
         canvas.width = canvas.offsetWidth * dpr; canvas.height = canvas.offsetHeight * dpr;
         ctx.scale(dpr, dpr);
         ctx.strokeStyle = '#000000'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        
-        let isDrawing = false; let lastX = 0; let lastY = 0; let lastTime = 0; 
-        let lastLineWidth = 3.5; 
-
+        let isDrawing = false; let lastX = 0; let lastY = 0; let lastTime = 0; let lastLineWidth = 3.5;
         function getPosition(e) { const rect = canvas.getBoundingClientRect(); return { x: (e.clientX || e.touches[0].clientX) - rect.left, y: (e.clientY || e.touches[0].clientY) - rect.top }; }
-        
         function draw(e) {
             if (!isDrawing) return; e.preventDefault();
             const pos = getPosition(e); const currentTime = Date.now(); const timeDiff = currentTime - lastTime || 1;
             const distance = Math.sqrt(Math.pow(pos.x - lastX, 2) + Math.pow(pos.y - lastY, 2));
             const velocity = distance / timeDiff;
-            
-            const lineWidth = Math.max(2.0, Math.min(7.0, 7.0 - velocity * 2.0)); 
-            
+            const lineWidth = Math.max(2.5, Math.min(7.0, 7.0 - velocity * 1.5));
             ctx.lineWidth = (lineWidth + lastLineWidth) / 2;
             ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
             [lastX, lastY, lastTime, lastLineWidth] = [pos.x, pos.y, currentTime, lineWidth];
         }
-        
         function startDrawing(e) {
             e.preventDefault(); isDrawing = true; const pos = getPosition(e);
-            [lastX, lastY] = [pos.x, pos.y]; lastTime = Date.now(); 
-            lastLineWidth = 3.5; 
-            
+            [lastX, lastY] = [pos.x, pos.y]; lastTime = Date.now(); lastLineWidth = 3.5;
             ctx.beginPath(); ctx.arc(pos.x, pos.y, lastLineWidth / 2, 0, Math.PI * 2); ctx.fillStyle = '#000000'; ctx.fill();
         }
-        
         function stopDrawing() { isDrawing = false; ctx.beginPath(); }
-        
         canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
         canvas.addEventListener('touchstart', startDrawing); canvas.addEventListener('touchmove', draw);
@@ -610,9 +451,6 @@
     }
 
     function clearCanvas(idx) { const canvas = document.getElementById(`canvas-${idx}`); if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); } }
-
-   
-
 
     function dataURLtoBlob(dataurl) {
         const arr = dataurl.split(',');
@@ -655,10 +493,8 @@
                 return;
             }
 
-            // Agrupar items por carpeta para mantener la lógica de firmas unificadas
             const folders = data.reduce((acc, item) => {
                 if (!acc[item.carpeta]) {
-                    // Guardamos solo la información relevante del primer item para la cabecera de la carpeta
                     acc[item.carpeta] = {
                         items: [],
                         fecha: item.fecha,
@@ -676,12 +512,7 @@
             const itemsPerPage = 10;
             let globalItemCounter = 1;
 
-            // Ordenar carpetas por la fecha más reciente
-            const sortedFolderNames = Object.keys(folders).sort((a, b) => {
-                const dateA = new Date(folders[a].fecha);
-                const dateB = new Date(folders[b].fecha);
-                return dateB - dateA;
-            });
+            const sortedFolderNames = Object.keys(folders).sort((a, b) => new Date(folders[b].fecha) - new Date(folders[a].fecha));
 
             let currentPageHTML = '';
             let itemsOnCurrentPage = 0;
@@ -689,7 +520,6 @@
             for (const folderName of sortedFolderNames) {
                 const folderData = folders[folderName];
                 
-                // Si añadir esta carpeta excede la página, cerramos la actual y empezamos una nueva
                 if (itemsOnCurrentPage > 0 && itemsOnCurrentPage + 1 > itemsPerPage) {
                     currentPageHTML += `</tbody></table></div>`;
                     allPagesHTML += currentPageHTML;
@@ -697,7 +527,6 @@
                     itemsOnCurrentPage = 0;
                 }
 
-                // Si la página está vacía, empezamos una nueva
                 if (itemsOnCurrentPage === 0) {
                     currentPageHTML = `
                         <div class="summary-page">
@@ -710,8 +539,6 @@
                                         <th>Items</th>
                                         <th>Tipo Documento</th>
                                         <th>Fecha Creación</th>
-                                        
-
                                         <th>Firma Recepción</th>
                                         <th>Firma Receptor</th>
                                     </tr>
@@ -721,9 +548,8 @@
                 }
 
                 const fechaCreacion = new Date(folderData.fecha).toLocaleDateString('es-ES');
+                const tipoDocumento = folderData.items[0]?.tipo_documento || 'N/A';
                 
-                                                            const tipoDocumento = folderData.items[0]?.tipo_documento || 'N/A';
-
                 const firmaRecepcionHTML = folderData.firma_recepcion_url 
                     ? `<div class="signer-info"><img src="${folderData.firma_recepcion_url}?t=${new Date().getTime()}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_recepcion || ''}</span></div>` 
                     : 'Pendiente';
@@ -743,14 +569,11 @@
                         <td>${firmaReceptorHTML}</td>
                     </tr>
                 `;
-
-
                 
                 itemsOnCurrentPage++;
                 globalItemCounter++;
             }
 
-            // Cierra la última página si tiene contenido
             if (itemsOnCurrentPage > 0) {
                 currentPageHTML += `</tbody></table></div>`;
                 allPagesHTML += currentPageHTML;
@@ -763,25 +586,16 @@
         }
     }
 
-    // --- Lógica para los botones de exportación ---
     document.getElementById('export-pdf-btn').addEventListener('click', () => {
         const { jsPDF } = window.jspdf;
         const pages = document.querySelectorAll('.summary-page');
         if (pages.length === 0) return alert('No hay nada que exportar.');
-
         const pdf = new jsPDF('p', 'mm', 'a4');
         const promises = [];
-
-        pages.forEach(page => {
-            promises.push(html2canvas(page, { scale: 2, useCORS: true }));
-
-        });
-
+        pages.forEach(page => { promises.push(html2canvas(page, { scale: 2, useCORS: true })); });
         Promise.all(promises).then(canvases => {
             canvases.forEach((canvas, index) => {
-                if (index > 0) {
-                    pdf.addPage();
-                }
+                if (index > 0) pdf.addPage();
                 const imgData = canvas.toDataURL('image/png');
                 const pdfWidth = pdf.internal.pageSize.getWidth();
                 const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -794,9 +608,7 @@
     document.getElementById('export-jpg-btn').addEventListener('click', () => {
         const summaryContent = document.getElementById('summary-content');
         if (!summaryContent.hasChildNodes()) return alert('No hay nada que exportar.');
-
         html2canvas(summaryContent, { scale: 2, useCORS: true, windowWidth: summaryContent.scrollWidth, windowHeight: summaryContent.scrollHeight }).then(canvas => {
-
             const link = document.createElement('a');
             link.href = canvas.toDataURL('image/jpeg', 0.9);
             link.download = 'resumen_cargos.jpg';
@@ -809,9 +621,8 @@
 </html>
 
 
+
+
     
 
-
-
-
-
+    
