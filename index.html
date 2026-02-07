@@ -234,15 +234,23 @@
         const div = document.createElement('div');
         div.className = 'item';
         div.id = `item-container-${index}`;
-        div.innerHTML = `
+        
+                div.innerHTML = `
             <button type="button" class="delete-item-btn" onclick="removeItemField(${index})">×</button>
             <label>Item</label>
             <input type="text" id="item-${index}" required>
             <label>Tipo de Documento</label>
-            <input type="text" id="tipo-${index}" required>
+            <select id="tipo-${index}" required>
+                <option value="Cargos de Emergencia">Cargos de Emergencia</option>
+                <option value="Documentos">Documentos</option>
+                <option value="Otros">Otros</option>
+            </select>
             <label>Observación</label>
             <textarea id="obs-${index}" rows="2"></textarea>
         `;
+
+
+        
         document.getElementById('items-container').appendChild(div);
         items.push(index);
     }
@@ -742,5 +750,6 @@
 
 
     
+
 
 
