@@ -379,6 +379,8 @@
         const headerContainer = document.getElementById('folder-info-header');
         
                 // Mostramos los nombres en el HTML
+                // Mostramos los nombres en el HTML
+         // Mostramos los nombres en el HTML
         headerContainer.innerHTML = `
             <div class="folder-info">
                 <h2>Carpeta: <span style="color:#d4af37;">${carpeta}</span></h2>
@@ -387,15 +389,16 @@
                     <div class="signature-box">
                         <h5>Firma Recepción</h5>
                         <div class="signer-name">${nombreRecepcion}</div>
-                        ${firmaRecepcionUrl ? `<img src="${firmaRecepcionUrl}" crossorigin="anonymous">` : '<p>Pendiente</p>'}
+                        ${firmaRecepcionUrl ? `<img src="${firmaRecepcionUrl}?t=${new Date().getTime()}" crossorigin="anonymous">` : '<p>Pendiente</p>'}
                     </div>
                     <div class="signature-box">
                         <h5>Firma Receptor</h5>
                         <div class="signer-name">${nombreReceptor}</div>
-                        ${firmaReceptorUrl ? `<img src="${firmaReceptorUrl}" crossorigin="anonymous">` : '<p>Pendiente</p>'}
+                        ${firmaReceptorUrl ? `<img src="${firmaReceptorUrl}?t=${new Date().getTime()}" crossorigin="anonymous">` : '<p>Pendiente</p>'}
                     </div>
                 </div>
             </div>`;
+
 
         
         const signatureContainer = document.getElementById('signature-section');
@@ -637,7 +640,10 @@
                                         <th>#</th>
                                         <th>Carpeta</th>
                                         <th>Items</th>
+                                        <th>Tipo Documento</th>
                                         <th>Fecha Creación</th>
+                                        
+
                                         <th>Firma Recepción</th>
                                         <th>Firma Receptor</th>
                                     </tr>
@@ -648,25 +654,29 @@
 
                 const fechaCreacion = new Date(folderData.fecha).toLocaleDateString('es-ES');
                 
-                              const firmaRecepcionHTML = folderData.firma_recepcion_url 
-                    ? `<div class="signer-info"><img src="${folderData.firma_recepcion_url}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_recepcion || ''}</span></div>` 
+                                                            const tipoDocumento = folderData.items[0]?.tipo_documento || 'N/A';
+
+                const firmaRecepcionHTML = folderData.firma_recepcion_url 
+                    ? `<div class="signer-info"><img src="${folderData.firma_recepcion_url}?t=${new Date().getTime()}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_recepcion || ''}</span></div>` 
                     : 'Pendiente';
                 
                 const firmaReceptorHTML = folderData.firma_receptor_url 
-                    ? `<div class="signer-info"><img src="${folderData.firma_receptor_url}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_receptor || ''}</span></div>` 
+                    ? `<div class="signer-info"><img src="${folderData.firma_receptor_url}?t=${new Date().getTime()}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_receptor || ''}</span></div>` 
                     : 'Pendiente';
-
 
                 currentPageHTML += `
                     <tr>
                         <td>${globalItemCounter}</td>
                         <td>${folderName}</td>
                         <td>${folderData.items.length}</td>
+                        <td>${tipoDocumento}</td>
                         <td>${fechaCreacion}</td>
                         <td>${firmaRecepcionHTML}</td>
                         <td>${firmaReceptorHTML}</td>
                     </tr>
                 `;
+
+
                 
                 itemsOnCurrentPage++;
                 globalItemCounter++;
@@ -695,7 +705,8 @@
         const promises = [];
 
         pages.forEach(page => {
-            promises.push(html2canvas(page, { scale: 2 }));
+            promises.push(html2canvas(page, { scale: 2, useCORS: true }));
+
         });
 
         Promise.all(promises).then(canvases => {
@@ -716,7 +727,8 @@
         const summaryContent = document.getElementById('summary-content');
         if (!summaryContent.hasChildNodes()) return alert('No hay nada que exportar.');
 
-        html2canvas(summaryContent, { scale: 2, windowWidth: summaryContent.scrollWidth, windowHeight: summaryContent.scrollHeight }).then(canvas => {
+        html2canvas(summaryContent, { scale: 2, useCORS: true, windowWidth: summaryContent.scrollWidth, windowHeight: summaryContent.scrollHeight }).then(canvas => {
+
             const link = document.createElement('a');
             link.href = canvas.toDataURL('image/jpeg', 0.9);
             link.download = 'resumen_cargos.jpg';
@@ -730,4 +742,5 @@
 
 
     
+
 
