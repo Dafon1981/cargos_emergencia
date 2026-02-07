@@ -72,6 +72,34 @@
         .summary-table .signer-name { font-size: 8pt; color: #555; }
         .page-break { page-break-after: always; }
         #summary-controls { position: fixed; top: 20px; right: 20px; z-index: 2001; }
+
+
+
+.filter-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #333;
+}
+.filter-controls > div {
+    flex-grow: 1;
+}
+.filter-controls label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    color: #aaa;
+}
+.filter-controls button {
+    flex-grow: 0;
+    padding: 12px 24px;
+    margin-bottom: 10px; /* Alinea con los inputs */
+}
+
+        
     </style>
 </head>
 <body>
@@ -103,7 +131,33 @@
                 <button class="danger" onclick="handleLogout()">Cerrar Sesión</button>
             </div>
         </div>
-        <div id="folders-list" class="card" style="display:none;"></div>
+        <div id="folders-list" class="card" style="display:none;">
+    <h3>Filtros de Búsqueda</h3>
+    <div class="filter-controls">
+        <div>
+            <label for="filter-tipo">Tipo de Documento</label>
+            <select id="filter-tipo">
+                <option value="">-- Todos --</option>
+                <option value="Cargos de Emergencia">Cargos de Emergencia</option>
+                <option value="Documentos">Documentos</option>
+                <option value="Otros">Otros</option>
+            </select>
+        </div>
+        <div>
+            <label for="filter-fecha-inicio">Desde</label>
+            <input type="date" id="filter-fecha-inicio">
+        </div>
+        <div>
+            <label for="filter-fecha-fin">Hasta</label>
+            <input type="date" id="filter-fecha-fin">
+        </div>
+        <button onclick="loadFolders()">Buscar</button>
+    </div>
+    <div id="folders-list-results">
+        <!-- Los resultados de la búsqueda aparecerán aquí -->
+    </div>
+</div>
+
     </div>
     
     <!-- Resto del HTML (sin cambios) -->
@@ -312,64 +366,69 @@
         loadFolder(carpeta);
     }
 
-    async function loadFolders() {
-        const supabase = getSupabase(); if (!supabase) return;
-        const container = document.getElementById('folders-list');
-        container.style.display = 'block';
-        container.innerHTML = '<h3>Cargando carpetas...</h3>';
 
-        const { data, error } = await supabase
-            .from('firmas_cargos')
-            .select('carpeta, fecha')
-            .order('fecha', { ascending: true });
 
-        if (error) {
-            container.innerHTML = `<p style="color:red;">Error al cargar carpetas: ${error.message}</p>`;
-            return;
-        }
-        
-        container.innerHTML = '<h3>Carpetas Disponibles</h3>';
-        if (!data || data.length === 0) {
-            container.innerHTML += '<p>No hay carpetas creadas.</p>';
-            return;
-        }
-        
-        const carpetasMap = new Map();
-        data.forEach(item => {
-            if (!carpetasMap.has(item.carpeta)) {
-                carpetasMap.set(item.carpeta, item.fecha);
-            }
-        });
+    
+  async function loadFolders() {
+    const supabase = getSupabase(); if (!supabase) return;
+    const container = document.getElementById('folders-list');
+    const resultsContainer = document.getElementById('folders-list-results');
+    
+    container.style.display = 'block';
+    resultsContainer.innerHTML = '<h3>Cargando carpetas...</h3>';
 
-        const carpetasInfo = Array.from(carpetasMap, ([nombre, fecha]) => ({ nombre, fecha }));
-        
-        carpetasInfo.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    // Leer valores de los filtros
+    const tipoFiltro = document.getElementById('filter-tipo').value || null;
+    const fechaInicio = document.getElementById('filter-fecha-inicio').value || null;
+    const fechaFin = document.getElementById('filter-fecha-fin').value || null;
 
-        const listContainer = document.createElement('div');
-        listContainer.className = 'folder-list-container';
-        
-        carpetasInfo.forEach(info => {
-            const listItem = document.createElement('div');
-            listItem.className = 'folder-list-item';
-            listItem.onclick = () => loadFolder(info.nombre);
+    // Llamar a la nueva función RPC de Supabase
+    const { data: carpetasInfo, error } = await supabase.rpc('filtrar_carpetas', {
+        tipo_filtro: tipoFiltro,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin
+    });
 
-            const folderName = document.createElement('span');
-            folderName.className = 'folder-name';
-            folderName.textContent = info.nombre;
-
-            const folderDate = document.createElement('span');
-            folderDate.className = 'folder-date';
-            const fecha = new Date(info.fecha);
-            folderDate.textContent = fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-            listItem.appendChild(folderName);
-            listItem.appendChild(folderDate);
-            listContainer.appendChild(listItem);
-        });
-        
-        container.appendChild(listContainer);
+    if (error) {
+        resultsContainer.innerHTML = `<p style="color:red;">Error al cargar carpetas: ${error.message}</p>`;
+        return;
     }
+    
+    resultsContainer.innerHTML = '<h3>Carpetas Disponibles</h3>';
+    if (!carpetasInfo || carpetasInfo.length === 0) {
+        resultsContainer.innerHTML += '<p>No se encontraron carpetas con esos criterios.</p>';
+        return;
+    }
+    
+    const listContainer = document.createElement('div');
+    listContainer.className = 'folder-list-container';
+    
+    carpetasInfo.forEach(info => {
+        const listItem = document.createElement('div');
+        listItem.className = 'folder-list-item';
+        listItem.onclick = () => loadFolder(info.carpeta);
 
+        const folderName = document.createElement('span');
+        folderName.className = 'folder-name';
+        folderName.textContent = info.carpeta;
+
+        const folderDate = document.createElement('span');
+        folderDate.className = 'folder-date';
+        const fecha = new Date(info.fecha);
+        folderDate.textContent = fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+        listItem.appendChild(folderName);
+        listItem.appendChild(folderDate);
+        listContainer.appendChild(listItem);
+    });
+    
+    resultsContainer.appendChild(listContainer);
+}
+
+
+
+
+    
     async function loadFolder(carpeta) {
         const supabase = getSupabase(); if (!supabase) return;
         const { data: items, error } = await supabase.from('firmas_cargos').select('*').eq('carpeta', carpeta).order('item');
@@ -751,6 +810,7 @@
 
 
     
+
 
 
 
