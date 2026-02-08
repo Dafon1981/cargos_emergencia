@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Firmas y Cargos v2.4 (Resumen con Filtros)</title>
+    <title>Gestión de Firmas y Cargos v2.5 (Filtro Usuario Mejorado)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -174,7 +174,10 @@
             <div class="summary-filters">
                 <div>
                     <label for="summary-filter-recepcion">Recepción (Usuario)</label>
-                    <input type="text" id="summary-filter-recepcion" placeholder="Nombre de usuario...">
+                    <!-- CAMBIO: De input a select -->
+                    <select id="summary-filter-recepcion">
+                        <option value="">-- Todos los Usuarios --</option>
+                    </select>
                 </div>
                 <div>
                     <label for="summary-filter-tipo">Tipo de Documento</label>
@@ -395,7 +398,7 @@
     }
 
 
-    async function loadFolder(carpeta) {
+        async function loadFolder(carpeta) {
         const supabase = getSupabase(); if (!supabase) return;
         const { data: items, error } = await supabase.from('firmas_cargos').select('*').eq('carpeta', carpeta).order('item');
         if (error || items.length === 0) { alert('Error o carpeta vacía.'); return; }
@@ -561,20 +564,45 @@
     }
 
     // =================================================================
-    // --- LÓGICA DE RESUMEN CON FILTROS ---
+    // --- LÓGICA DE RESUMEN CON FILTROS MEJORADA ---
     // =================================================================
-    function openSummaryView() {
+    
+    // NUEVA FUNCIÓN: Carga los usuarios en el ComboBox del filtro
+    async function populateUserFilter() {
+        const supabase = getSupabase(); if (!supabase) return;
+        const userSelect = document.getElementById('summary-filter-recepcion');
+        
+        // Evita duplicar usuarios si ya se cargaron
+        if (userSelect.options.length > 1) return;
+
+        const { data: usuarios, error } = await supabase.from('usuarios').select('usuario').order('usuario');
+        if (error) {
+            console.error("Error cargando usuarios:", error);
+            return;
+        }
+
+        usuarios.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.usuario;
+            option.textContent = user.usuario;
+            userSelect.appendChild(option);
+        });
+    }
+
+    // FUNCIÓN MODIFICADA: Ahora carga los usuarios antes de mostrar
+    async function openSummaryView() {
+        await populateUserFilter(); // Espera a que los usuarios se carguen
         document.getElementById('summary-view').style.display = 'flex';
         generateSummary(); // Genera el resumen con filtros vacíos al abrir
     }
 
+    // FUNCIÓN MODIFICADA: Lee del ComboBox y ajusta el filtro
     async function generateSummary() {
         const supabase = getSupabase(); if (!supabase) return;
         const summaryContent = document.getElementById('summary-content');
         summaryContent.innerHTML = '<h2>Generando resumen, por favor espera...</h2>';
 
         try {
-            // 1. Obtener todos los datos
             const { data, error } = await supabase.from('firmas_cargos').select('*').order('fecha', { ascending: false });
             if (error) throw error;
 
@@ -583,7 +611,6 @@
                 return;
             }
 
-            // 2. Agrupar datos por carpeta
             const folders = data.reduce((acc, item) => {
                 if (!acc[item.carpeta]) {
                     acc[item.carpeta] = {
@@ -603,15 +630,15 @@
 
             let allFolders = Object.entries(folders).map(([name, data]) => ({ name, ...data }));
 
-            // 3. Obtener valores de los filtros
-            const recepcionFiltro = document.getElementById('summary-filter-recepcion').value.trim().toLowerCase();
+            // CAMBIO: Lee el valor del ComboBox
+            const recepcionFiltro = document.getElementById('summary-filter-recepcion').value;
             const tipoFiltro = document.getElementById('summary-filter-tipo').value;
             const fechaInicioStr = document.getElementById('summary-filter-inicio').value;
             const fechaFinStr = document.getElementById('summary-filter-fin').value;
 
-            // 4. Aplicar filtros
             const filteredFolders = allFolders.filter(folder => {
-                const recepcionMatch = !recepcionFiltro || (folder.nombre_recepcion && folder.nombre_recepcion.toLowerCase().includes(recepcionFiltro));
+                // CAMBIO: Comparación exacta con el valor del ComboBox
+                const recepcionMatch = !recepcionFiltro || folder.nombre_recepcion === recepcionFiltro;
                 const tipoMatch = !tipoFiltro || folder.tipos.has(tipoFiltro);
                 
                 let fechaMatch = true;
@@ -637,7 +664,6 @@
                 return;
             }
 
-            // 5. Generar el HTML para las páginas del resumen (con los datos ya filtrados)
             let allPagesHTML = '';
             const itemsPerPage = 10;
             let globalItemCounter = 1;
@@ -711,5 +737,3 @@
 </script>
 </body>
 </html>
-
-    
