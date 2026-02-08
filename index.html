@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Firmas y Cargos v2.2 (Filtro JS Estable)</title>
+    <title>Gestión de Firmas y Cargos v2.3 (Filtro Estable)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -297,14 +297,79 @@
     }
 
     // =================================================================
-    // --- FUNCIÓN MODIFICADA: loadFolders() con filtro en JS ---
+    // --- FUNCIÓN CORREGIDA: loadFolders() con filtro JS 100% funcional ---
     // =================================================================
+    async function loadFolders() {
+        const supabase = getSupabase(); if (!supabase) return;
+        const resultsContainer = document.getElementById('folders-list-results');
+        resultsContainer.innerHTML = '<h3>Cargando carpetas...</h3>';
+
+        const { data, error } = await supabase.from('firmas_cargos').select('carpeta, fecha, tipo_documento').order('fecha', { ascending: false });
+        if (error) { resultsContainer.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`; return; }
+        if (!data || data.length === 0) { resultsContainer.innerHTML = '<p>No hay carpetas creadas.</p>'; return; }
+
+        const tipoFiltro = document.getElementById('filter-tipo').value;
+        const fechaInicioStr = document.getElementById('filter-fecha-inicio').value;
+        const fechaFinStr = document.getElementById('filter-fecha-fin').value;
+
+        const carpetasMap = data.reduce((acc, item) => {
+            if (!acc.has(item.carpeta)) {
+                acc.set(item.carpeta, { fecha: item.fecha, tipos: new Set() });
+            }
+            acc.get(item.carpeta).tipos.add(item.tipo_documento);
+            return acc;
+        }, new Map());
+
+        let carpetasInfo = Array.from(carpetasMap, ([nombre, info]) => ({ carpeta: nombre, fecha: info.fecha, tipos: info.tipos }));
+
+        const filteredData = carpetasInfo.filter(info => {
+            const tipoMatch = !tipoFiltro || info.tipos.has(tipoFiltro);
+
+            let fechaMatch = true;
+            if (fechaInicioStr || fechaFinStr) {
+                const fechaItem = new Date(info.fecha);
+                fechaItem.setHours(0, 0, 0, 0);
+
+                if (fechaInicioStr) {
+                    const fechaInicio = new Date(fechaInicioStr);
+                    fechaInicio.setUTCHours(0,0,0,0); // Usar UTC para evitar problemas de zona horaria
+                    if (fechaItem < fechaInicio) fechaMatch = false;
+                }
+                if (fechaFinStr && fechaMatch) {
+                    const fechaFin = new Date(fechaFinStr);
+                    fechaFin.setUTCHours(0,0,0,0); // Usar UTC para evitar problemas de zona horaria
+                    if (fechaItem > fechaFin) fechaMatch = false;
+                }
+            }
+            
+            return tipoMatch && fechaMatch;
+        });
+
+        resultsContainer.innerHTML = '<h3>Carpetas Disponibles</h3>';
+        if (filteredData.length === 0) { resultsContainer.innerHTML += '<p>No se encontraron carpetas con esos criterios.</p>'; return; }
+
+        const listContainer = document.createElement('div');
+        listContainer.className = 'folder-list-container';
+        filteredData.forEach(info => {
+            const listItem = document.createElement('div');
+            listItem.className = 'folder-list-item';
+            listItem.onclick = () => loadFolder(info.carpeta);
+            const folderName = document.createElement('span');
+            folderName.className = 'folder-name';
+            folderName.textContent = info.carpeta;
+            const folderDate = document.createElement('span');
+            folderDate.className = 'folder-date';
+            folderDate.textContent = new Date(info.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            listItem.appendChild(folderName);
+            listItem.appendChild(folderDate);
+            listContainer.appendChild(listItem);
+        });
+        resultsContainer.appendChild(listContainer);
+    }
 
 
 
-
-
-        async function loadFolder(carpeta) {
+    async function loadFolder(carpeta) {
         const supabase = getSupabase(); if (!supabase) return;
         const { data: items, error } = await supabase.from('firmas_cargos').select('*').eq('carpeta', carpeta).order('item');
         if (error || items.length === 0) { alert('Error o carpeta vacía.'); return; }
@@ -469,9 +534,6 @@
         document.getElementById('folders-list').style.display = 'none';
     }
 
-    // =================================================================
-    // --- ¡NUEVA LÓGICA PARA EL MÓDULO DE RESUMEN! ---
-    // =================================================================
     async function generateSummary() {
         const supabase = getSupabase(); if (!supabase) return;
         const summaryView = document.getElementById('summary-view');
@@ -623,6 +685,5 @@
 
 
 
-    
 
     
