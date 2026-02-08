@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Firmas y Cargos v2.3 (Filtro Estable)</title>
+    <title>Gestión de Firmas y Cargos v2.4 (Resumen con Filtros)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -57,7 +57,11 @@
         .modal-content { background: #1a1a1a; margin: auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .modal-content textarea { height: 120px; }
         .summary-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; flex-direction: column; }
-        .summary-toolbar { background: #1a1a1a; padding: 15px; text-align: center; }
+        .summary-toolbar { background: #1a1a1a; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
+        .summary-actions, .summary-filters { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 15px; }
+        .summary-filters > div { display: flex; flex-direction: column; }
+        .summary-filters label { font-size: 0.8rem; color: #aaa; margin-bottom: 4px; }
+        .summary-filters input, .summary-filters select { padding: 8px; font-size: 0.9rem; margin: 0; }
         .summary-container { flex-grow: 1; overflow: auto; padding: 20px; }
         .summary-page { background: white; color: black; width: 210mm; min-height: 297mm; padding: 20mm; margin: 20px auto; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
         .summary-table { width: 100%; border-collapse: collapse; font-size: 10pt; }
@@ -95,7 +99,7 @@
             <div class="buttons">
                 <button onclick="showCreateFolder()">Crear Nueva Carpeta</button>
                 <button onclick="showFolderFilter()">Consultar Carpetas</button>
-                <button class="secondary" onclick="generateSummary()">Resumen</button>
+                <button class="secondary" onclick="openSummaryView()">Resumen</button>
                 <button class="danger" onclick="handleLogout()">Cerrar Sesión</button>
             </div>
         </div>
@@ -167,9 +171,35 @@
     <!-- Summary View -->
     <div id="summary-view" class="summary-view">
         <div class="summary-toolbar">
-            <button id="export-pdf-btn">Exportar a PDF</button>
-            <button id="export-jpg-btn">Exportar a JPG</button>
-            <button class="secondary" onclick="document.getElementById('summary-view').style.display='none'">Cerrar</button>
+            <div class="summary-filters">
+                <div>
+                    <label for="summary-filter-recepcion">Recepción (Usuario)</label>
+                    <input type="text" id="summary-filter-recepcion" placeholder="Nombre de usuario...">
+                </div>
+                <div>
+                    <label for="summary-filter-tipo">Tipo de Documento</label>
+                    <select id="summary-filter-tipo">
+                        <option value="">-- Todos --</option>
+                        <option value="Cargos de Emergencia">Cargos de Emergencia</option>
+                        <option value="Documentos">Documentos</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="summary-filter-inicio">Desde</label>
+                    <input type="date" id="summary-filter-inicio">
+                </div>
+                <div>
+                    <label for="summary-filter-fin">Hasta</label>
+                    <input type="date" id="summary-filter-fin">
+                </div>
+                <button onclick="generateSummary()">Filtrar</button>
+            </div>
+            <div class="summary-actions">
+                <button id="export-pdf-btn">Exportar a PDF</button>
+                <button id="export-jpg-btn">Exportar a JPG</button>
+                <button class="secondary" onclick="document.getElementById('summary-view').style.display='none'">Cerrar</button>
+            </div>
         </div>
         <div class="summary-container" id="summary-content"></div>
     </div>
@@ -296,9 +326,6 @@
         loadFolders();
     }
 
-    // =================================================================
-    // --- FUNCIÓN CORREGIDA: loadFolders() con filtro JS 100% funcional ---
-    // =================================================================
     async function loadFolders() {
         const supabase = getSupabase(); if (!supabase) return;
         const resultsContainer = document.getElementById('folders-list-results');
@@ -332,12 +359,12 @@
 
                 if (fechaInicioStr) {
                     const fechaInicio = new Date(fechaInicioStr);
-                    fechaInicio.setUTCHours(0,0,0,0); // Usar UTC para evitar problemas de zona horaria
+                    fechaInicio.setUTCHours(0,0,0,0);
                     if (fechaItem < fechaInicio) fechaMatch = false;
                 }
                 if (fechaFinStr && fechaMatch) {
                     const fechaFin = new Date(fechaFinStr);
-                    fechaFin.setUTCHours(0,0,0,0); // Usar UTC para evitar problemas de zona horaria
+                    fechaFin.setUTCHours(0,0,0,0);
                     if (fechaItem > fechaFin) fechaMatch = false;
                 }
             }
@@ -366,7 +393,6 @@
         });
         resultsContainer.appendChild(listContainer);
     }
-
 
 
     async function loadFolder(carpeta) {
@@ -534,20 +560,22 @@
         document.getElementById('folders-list').style.display = 'none';
     }
 
+    // =================================================================
+    // --- LÓGICA DE RESUMEN CON FILTROS ---
+    // =================================================================
+    function openSummaryView() {
+        document.getElementById('summary-view').style.display = 'flex';
+        generateSummary(); // Genera el resumen con filtros vacíos al abrir
+    }
+
     async function generateSummary() {
         const supabase = getSupabase(); if (!supabase) return;
-        const summaryView = document.getElementById('summary-view');
         const summaryContent = document.getElementById('summary-content');
-        
         summaryContent.innerHTML = '<h2>Generando resumen, por favor espera...</h2>';
-        summaryView.style.display = 'flex';
 
         try {
-            const { data, error } = await supabase
-                .from('firmas_cargos')
-                .select('*')
-                .order('fecha', { ascending: false });
-
+            // 1. Obtener todos los datos
+            const { data, error } = await supabase.from('firmas_cargos').select('*').order('fecha', { ascending: false });
             if (error) throw error;
 
             if (!data || data.length === 0) {
@@ -555,6 +583,7 @@
                 return;
             }
 
+            // 2. Agrupar datos por carpeta
             const folders = data.reduce((acc, item) => {
                 if (!acc[item.carpeta]) {
                     acc[item.carpeta] = {
@@ -563,26 +592,60 @@
                         firma_recepcion_url: item.firma_recepcion_url,
                         nombre_recepcion: item.nombre_recepcion,
                         firma_receptor_url: item.firma_receptor_url,
-                        nombre_receptor: item.nombre_receptor
+                        nombre_receptor: item.nombre_receptor,
+                        tipos: new Set()
                     };
                 }
                 acc[item.carpeta].items.push(item);
+                acc[item.carpeta].tipos.add(item.tipo_documento);
                 return acc;
             }, {});
 
+            let allFolders = Object.entries(folders).map(([name, data]) => ({ name, ...data }));
+
+            // 3. Obtener valores de los filtros
+            const recepcionFiltro = document.getElementById('summary-filter-recepcion').value.trim().toLowerCase();
+            const tipoFiltro = document.getElementById('summary-filter-tipo').value;
+            const fechaInicioStr = document.getElementById('summary-filter-inicio').value;
+            const fechaFinStr = document.getElementById('summary-filter-fin').value;
+
+            // 4. Aplicar filtros
+            const filteredFolders = allFolders.filter(folder => {
+                const recepcionMatch = !recepcionFiltro || (folder.nombre_recepcion && folder.nombre_recepcion.toLowerCase().includes(recepcionFiltro));
+                const tipoMatch = !tipoFiltro || folder.tipos.has(tipoFiltro);
+                
+                let fechaMatch = true;
+                if (fechaInicioStr || fechaFinStr) {
+                    const fechaItem = new Date(folder.fecha);
+                    fechaItem.setHours(0, 0, 0, 0);
+                    if (fechaInicioStr) {
+                        const fechaInicio = new Date(fechaInicioStr);
+                        fechaInicio.setUTCHours(0,0,0,0);
+                        if (fechaItem < fechaInicio) fechaMatch = false;
+                    }
+                    if (fechaFinStr && fechaMatch) {
+                        const fechaFin = new Date(fechaFinStr);
+                        fechaFin.setUTCHours(0,0,0,0);
+                        if (fechaItem > fechaFin) fechaMatch = false;
+                    }
+                }
+                return recepcionMatch && tipoMatch && fechaMatch;
+            });
+
+            if (filteredFolders.length === 0) {
+                summaryContent.innerHTML = '<h2>No se encontraron resultados con los filtros aplicados.</h2>';
+                return;
+            }
+
+            // 5. Generar el HTML para las páginas del resumen (con los datos ya filtrados)
             let allPagesHTML = '';
             const itemsPerPage = 10;
             let globalItemCounter = 1;
-
-            const sortedFolderNames = Object.keys(folders).sort((a, b) => new Date(folders[b].fecha) - new Date(folders[a].fecha));
-
             let currentPageHTML = '';
             let itemsOnCurrentPage = 0;
 
-            for (const folderName of sortedFolderNames) {
-                const folderData = folders[folderName];
-                
-                if (itemsOnCurrentPage > 0 && itemsOnCurrentPage + 1 > itemsPerPage) {
+            for (const folderData of filteredFolders) {
+                if (itemsOnCurrentPage > 0 && itemsOnCurrentPage >= itemsPerPage) {
                     currentPageHTML += `</tbody></table></div>`;
                     allPagesHTML += currentPageHTML;
                     currentPageHTML = '';
@@ -590,47 +653,14 @@
                 }
 
                 if (itemsOnCurrentPage === 0) {
-                    currentPageHTML = `
-                        <div class="summary-page">
-                            <h1>Resumen de Cargos</h1>
-                            <table class="summary-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Carpeta</th>
-                                        <th>Items</th>
-                                        <th>Tipo Documento</th>
-                                        <th>Fecha Creación</th>
-                                        <th>Firma Recepción</th>
-                                        <th>Firma Receptor</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                    `;
+                    currentPageHTML = `<div class="summary-page"><h1>Resumen de Cargos</h1><table class="summary-table"><thead><tr><th>#</th><th>Carpeta</th><th>Items</th><th>Recepción</th><th>Fecha Creación</th><th>Firma Recepción</th><th>Firma Receptor</th></tr></thead><tbody>`;
                 }
 
                 const fechaCreacion = new Date(folderData.fecha).toLocaleDateString('es-ES');
-                const tipoDocumento = folderData.items[0]?.tipo_documento || 'N/A';
-                
-                const firmaRecepcionHTML = folderData.firma_recepcion_url 
-                    ? `<div class="signer-info"><img src="${folderData.firma_recepcion_url}?t=${new Date().getTime()}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_recepcion || ''}</span></div>` 
-                    : 'Pendiente';
-                
-                const firmaReceptorHTML = folderData.firma_receptor_url 
-                    ? `<div class="signer-info"><img src="${folderData.firma_receptor_url}?t=${new Date().getTime()}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_receptor || ''}</span></div>` 
-                    : 'Pendiente';
+                const firmaRecepcionHTML = folderData.firma_recepcion_url ? `<div class="signer-info"><img src="${folderData.firma_recepcion_url}?t=${new Date().getTime()}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_recepcion || ''}</span></div>` : 'Pendiente';
+                const firmaReceptorHTML = folderData.firma_receptor_url ? `<div class="signer-info"><img src="${folderData.firma_receptor_url}?t=${new Date().getTime()}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_receptor || ''}</span></div>` : 'Pendiente';
 
-                currentPageHTML += `
-                    <tr>
-                        <td>${globalItemCounter}</td>
-                        <td>${folderName}</td>
-                        <td>${folderData.items.length}</td>
-                        <td>${tipoDocumento}</td>
-                        <td>${fechaCreacion}</td>
-                        <td>${firmaRecepcionHTML}</td>
-                        <td>${firmaReceptorHTML}</td>
-                    </tr>
-                `;
+                currentPageHTML += `<tr><td>${globalItemCounter}</td><td>${folderData.name}</td><td>${folderData.items.length}</td><td>${folderData.nombre_recepcion || 'N/A'}</td><td>${fechaCreacion}</td><td>${firmaRecepcionHTML}</td><td>${firmaReceptorHTML}</td></tr>`;
                 
                 itemsOnCurrentPage++;
                 globalItemCounter++;
@@ -663,17 +693,17 @@
                 const pdfHeight = pdf.internal.pageSize.getHeight();
                 pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
             });
-            pdf.save('resumen_cargos.pdf');
+            pdf.save('resumen_cargos_filtrado.pdf');
         });
     });
 
     document.getElementById('export-jpg-btn').addEventListener('click', () => {
         const summaryContent = document.getElementById('summary-content');
-        if (!summaryContent.hasChildNodes()) return alert('No hay nada que exportar.');
+        if (!summaryContent.hasChildNodes() || summaryContent.querySelectorAll('.summary-page').length === 0) return alert('No hay nada que exportar.');
         html2canvas(summaryContent, { scale: 2, useCORS: true, windowWidth: summaryContent.scrollWidth, windowHeight: summaryContent.scrollHeight }).then(canvas => {
             const link = document.createElement('a');
             link.href = canvas.toDataURL('image/jpeg', 0.9);
-            link.download = 'resumen_cargos.jpg';
+            link.download = 'resumen_cargos_filtrado.jpg';
             link.click();
         });
     });
@@ -681,9 +711,5 @@
 </script>
 </body>
 </html>
-
-
-
-
 
     
