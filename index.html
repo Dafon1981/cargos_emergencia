@@ -3,737 +3,409 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Firmas y Cargos v2.5 (Filtro Usuario Mejorado)</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <title>Lista Firma Cargos v2.6</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Librería para el canvas de firma -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     <style>
-        /* --- Estilos Completos y Corregidos --- */
-        * { margin:0; padding:0; box-sizing:border-box; }
-        html { height: 100%; }
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: #0f0f0f;
-            color: #e0e0e0;
-            min-height: 100%;
-            padding: 20px;
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; 
+            margin: 20px; 
+            background-color: #f4f7f6; 
+            color: #333;
         }
-        .container { width: 100%; max-width: 960px; margin: 0 auto; padding: 1rem; }
-        h1, h2, h3, h4 { color: #d4af37; margin-bottom: 1rem; }
-        .card { background: #1a1a1a; border-radius: 12px; padding: 2.5rem; box-shadow: 0 8px 30px rgba(0,0,0,0.6  ); margin: 1.5rem 0; }
-        input, textarea, select { width: 100%; padding: 12px; margin: 10px 0; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: #e0e0e0; font-size: 1rem; }
-        button {
-            background: #d4af37; color: #0f0f0f; border: none;
-            padding: 14px 28px; margin: 8px 4px; border-radius: 8px;
-            font-weight: bold; cursor: pointer; font-size: 1.1rem;
-            transition: all 0.2s; flex-grow: 1; max-width: 300px;
+        .container { 
+            max-width: 800px; 
+            margin: auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1 ); 
         }
-        button:hover { background: #b8972e; transform: translateY(-2px); }
-        button.secondary { background: #444; color: #e0e0e0; }
-        button.secondary:hover { background: #555; }
-        button.danger { background: #b71c1c; color: white; }
-        button.danger:hover { background: #c62828; }
-        .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; width: 100%; }
-        .hidden { display: none !important; }
-        .item { background: #222; padding: 1.5rem; border-radius: 10px; margin: 1.5rem 0; border-left: 4px solid #d4af37; position: relative; }
-        .item.editable:hover { background-color: #333; cursor: pointer; }
-        .delete-item-btn { position: absolute; top: 10px; right: 10px; background: #555; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 16px; line-height: 28px; text-align: center; cursor: pointer; padding: 0; min-width: 28px; max-width: 28px; }
-        .flex-center { display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        #mensaje { margin-top: 1rem; font-weight: bold; }
-        canvas { border: 2px solid #444; background: #f8f8f8; border-radius: 8px; margin: 12px 0; touch-action: none; width: 100%; max-width: 500px; height: 280px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.1); }
-        .folder-info { border-bottom: 1px solid #444; padding-bottom: 1.5rem; margin-bottom: 1.5rem; }
-        .signatures-display { display: flex; justify-content: space-around; align-items: center; text-align: center; margin-top: 1rem; flex-wrap: wrap; gap: 20px; }
-        .signature-box { border: 1px solid #333; padding: 15px; border-radius: 8px; width: 250px; }
-        .signature-box h5 { color: #aaa; margin-bottom: 10px; }
-        .signature-box img { max-height: 80px; width: auto; background-color: white; padding: 5px; border-radius: 4px; margin-top: 5px; }
-        .signature-box p { color: #888; font-style: italic; }
-        .signature-box .signer-name { color: #d4af37; font-weight: bold; height: 20px; }
-        .folder-list-container { max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 10px; }
-        .folder-list-item { background: #2a2a2a; padding: 15px 20px; border-radius: 8px; border-left: 4px solid #d4af37; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; display: flex; justify-content: space-between; align-items: center; }
-        .folder-list-item:hover { background-color: #333; border-color: #b8972e; }
-        .folder-name { font-weight: 600; font-size: 1.1rem; }
-        .folder-date { font-size: 0.9rem; color: #aaa; }
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; }
-        .modal-content { background: #1a1a1a; margin: auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-        .modal-content textarea { height: 120px; }
-        .summary-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; flex-direction: column; }
-        .summary-toolbar { background: #1a1a1a; padding: 15px; display: flex; flex-direction: column; gap: 15px; }
-        .summary-actions, .summary-filters { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 15px; }
-        .summary-filters > div { display: flex; flex-direction: column; }
-        .summary-filters label { font-size: 0.8rem; color: #aaa; margin-bottom: 4px; }
-        .summary-filters input, .summary-filters select { padding: 8px; font-size: 0.9rem; margin: 0; }
-        .summary-container { flex-grow: 1; overflow: auto; padding: 20px; }
-        .summary-page { background: white; color: black; width: 210mm; min-height: 297mm; padding: 20mm; margin: 20px auto; box-shadow: 0 0 10px rgba(255,255,255,0.2); }
-        .summary-table { width: 100%; border-collapse: collapse; font-size: 10pt; }
-        .summary-table th, .summary-table td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: middle; }
-        .summary-table th { background: #f2f2f2; }
-        .summary-table img { max-height: 40px; vertical-align: middle; }
-        .signer-info { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-        .signer-name { font-size: 8pt; font-weight: normal; }
-        .filter-controls { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #333; }
-        .filter-controls > div { flex-grow: 1; }
-        .filter-controls label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #aaa; }
-        .filter-controls button { flex-grow: 0; padding: 12px 24px; margin-bottom: 10px; }
+        h1, h2 { 
+            color: #333; 
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        button { 
+            background-color: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 15px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            margin: 5px; 
+            transition: background-color 0.3s;
+        }
+        button:hover { 
+            background-color: #0056b3; 
+        }
+        button:disabled { 
+            background-color: #ccc; 
+            cursor: not-allowed;
+        }
+        input, select { 
+            padding: 10px; 
+            margin: 5px 0; 
+            border-radius: 5px; 
+            border: 1px solid #ccc; 
+            width: calc(100% - 22px); 
+            box-sizing: border-box;
+        }
+        .hidden { 
+            display: none; 
+        }
+        .folder-list, .file-list { 
+            list-style: none; 
+            padding: 0; 
+        }
+        .folder-list li, .file-list li { 
+            background: #e9ecef; 
+            padding: 15px; 
+            margin-bottom: 10px; 
+            border-radius: 5px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .folder-list li:hover {
+            background-color: #d8dde2;
+        }
+        .canvas-container { 
+            border: 1px solid #ccc; 
+            margin-top: 10px; 
+            padding: 10px;
+            border-radius: 5px;
+        }
+        canvas { 
+            touch-action: none; 
+            width: 100%;
+            height: 200px;
+            border: 1px dashed #ddd;
+        }
+        #summary-page { 
+            border: 1px solid #000; 
+            padding: 20px; 
+            margin-top: 20px; 
+            background: white; 
+        }
+        #filter-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+        .mensaje-inicial {
+            text-align: center;
+            padding: 50px 20px;
+            color: #777;
+            font-size: 1.2em;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
+    <div class="container">
+        <h1>Gestión de Firma de Cargos</h1>
 
-<div class="container">
-    <!-- Login Section -->
-    <div id="login-section" class="card flex-center">
-        <h1>Iniciar Sesión</h1>
-        <form id="login-form" style="width:100%; max-width:420px;">
-            <label for="usuario">Usuario</label>
-            <input type="text" id="usuario" required placeholder="Ej: Manuel">
-            <label for="clave">Contraseña</label>
-            <input type="text" id="clave" required placeholder="Ej: mutter">
-            <div class="buttons"><button type="button" onclick="handleLogin()">Iniciar Sesión</button></div>
-            <div id="mensaje" style="color: #ff9800;"></div>
-        </form>
-    </div>
+        <!-- Vista Principal -->
+        <div id="main-view">
+            <h2>Folders de Cargos</h2>
+            <button id="create-folder-btn">Crear Nuevo Folder</button>
+            <button id="summary-btn">Ver Resumen</button>
+            <ul id="folder-list" class="folder-list"></ul>
+        </div>
 
-    <!-- Dashboard Section -->
-    <div id="dashboard" class="hidden">
-        <div class="card flex-center">
-            <h1>Bienvenido, <span id="username" style="color:#d4af37;"></span></h1>
-            <div class="buttons">
-                <button onclick="showCreateFolder()">Crear Nueva Carpeta</button>
-                <button onclick="showFolderFilter()">Consultar Carpetas</button>
-                <button class="secondary" onclick="openSummaryView()">Resumen</button>
-                <button class="danger" onclick="handleLogout()">Cerrar Sesión</button>
+        <!-- Vista de Carga de Archivos -->
+        <div id="upload-view" class="hidden">
+            <h2 id="upload-view-title"></h2>
+            <input type="file" id="file-input" multiple accept="image/*">
+            <button id="upload-btn">Subir Archivos</button>
+            <button class="back-to-main">Volver</button>
+            <h3>Archivos en este folder:</h3>
+            <ul id="file-list" class="file-list"></ul>
+            <div id="signature-section" class="hidden">
+                <h3>Firmas de Recepción</h3>
+                <div class="canvas-container">
+                    <p>Firma 1:</p>
+                    <canvas id="signature-canvas-1"></canvas>
+                    <button onclick="clearCanvas('signature-canvas-1')">Limpiar</button>
+                </div>
+                <div class="canvas-container">
+                    <p>Firma 2:</p>
+                    <canvas id="signature-canvas-2"></canvas>
+                    <button onclick="clearCanvas('signature-canvas-2')">Limpiar</button>
+                </div>
+                <button id="save-signatures-btn">Guardar Firmas y Finalizar</button>
             </div>
         </div>
-        <div id="folders-list" class="card" style="display:none;">
-            <h3>Filtros de Búsqueda</h3>
-            <div class="filter-controls">
-                <div>
-                    <label for="filter-tipo">Tipo de Documento</label>
-                    <select id="filter-tipo">
-                        <option value="">-- Todos --</option>
-                        <option value="Cargos de Emergencia">Cargos de Emergencia</option>
-                        <option value="Documentos">Documentos</option>
-                        <option value="Otros">Otros</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="filter-fecha-inicio">Desde</label>
-                    <input type="date" id="filter-fecha-inicio">
-                </div>
-                <div>
-                    <label for="filter-fecha-fin">Hasta</label>
-                    <input type="date" id="filter-fecha-fin">
-                </div>
-                <button onclick="loadFolders()">Buscar</button>
-            </div>
-            <div id="folders-list-results"></div>
-        </div>
-    </div>
 
-    <!-- Create Folder Section -->
-    <div id="create-folder" class="hidden">
-        <div class="card">
-            <h2>Crear Nueva Carpeta</h2>
-            <label for="carpeta">Nombre de la carpeta</label>
-            <input type="text" id="carpeta" required>
-            <h3>Items</h3>
-            <div id="items-container"></div>
-            <div class="buttons">
-                <button onclick="addItemField()">+ Agregar Item</button>
-                <button onclick="createFolderAndItems()">Guardar Carpeta e Items</button>
-                <button class="secondary" onclick="backToDashboard()">Volver</button>
+        <!-- Vista de Resumen -->
+        <div id="summary-view" class="hidden">
+            <h2>Resumen de Cargos</h2>
+            <div id="filter-section">
+                <label for="user-filter">Recepción (Usuario):</label>
+                <select id="user-filter"><option value="">Todos</option></select>
+                <label for="start-date-filter">Desde:</label>
+                <input type="date" id="start-date-filter">
+                <label for="end-date-filter">Hasta:</label>
+                <input type="date" id="end-date-filter">
+                <label for="doc-type-filter">Tipo Doc:</label>
+                <select id="doc-type-filter">
+                    <option value="">Todos</option>
+                    <option value="Cargo">Cargo</option>
+                    <option value="Otro">Otro</option>
+                </select>
+                <button id="apply-filters-btn">Generar Impresión</button>
             </div>
+            <div id="summary-results">
+                <div class="mensaje-inicial">
+                    <p>Por favor, aplique un filtro para generar el resumen de impresión.</p>
+                </div>
+            </div>
+            <button class="back-to-main">Volver al Menú Principal</button>
         </div>
     </div>
-
-    <!-- View Folder Section -->
-    <div id="view-folder" class="hidden">
-        <div class="card">
-            <div id="folder-info-header"></div>
-            <div id="signature-section"></div>
-            <h3 style="margin-top: 2rem; border-top: 1px solid #444; padding-top: 2rem;">Items en esta Carpeta</h3>
-            <div id="items-view"></div>
-            <div class="buttons" style="margin-top: 2rem;"><button class="secondary" onclick="backToDashboard()">Volver al inicio</button></div>
-        </div>
-    </div>
-
-    <!-- Observation Modal -->
-    <div id="observation-modal" class="modal">
-        <div class="modal-content">
-            <h2>Editar Observación</h2>
-            <textarea id="observation-text" rows="4"></textarea>
-            <div class="buttons">
-                <button id="save-observation-btn">Guardar</button>
-                <button class="secondary" onclick="closeObservationModal()">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Summary View -->
-    <div id="summary-view" class="summary-view">
-        <div class="summary-toolbar">
-            <div class="summary-filters">
-                <div>
-                    <label for="summary-filter-recepcion">Recepción (Usuario)</label>
-                    <!-- CAMBIO: De input a select -->
-                    <select id="summary-filter-recepcion">
-                        <option value="">-- Todos los Usuarios --</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="summary-filter-tipo">Tipo de Documento</label>
-                    <select id="summary-filter-tipo">
-                        <option value="">-- Todos --</option>
-                        <option value="Cargos de Emergencia">Cargos de Emergencia</option>
-                        <option value="Documentos">Documentos</option>
-                        <option value="Otros">Otros</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="summary-filter-inicio">Desde</label>
-                    <input type="date" id="summary-filter-inicio">
-                </div>
-                <div>
-                    <label for="summary-filter-fin">Hasta</label>
-                    <input type="date" id="summary-filter-fin">
-                </div>
-                <button onclick="generateSummary()">Filtrar</button>
-            </div>
-            <div class="summary-actions">
-                <button id="export-pdf-btn">Exportar a PDF</button>
-                <button id="export-jpg-btn">Exportar a JPG</button>
-                <button class="secondary" onclick="document.getElementById('summary-view').style.display='none'">Cerrar</button>
-            </div>
-        </div>
-        <div class="summary-container" id="summary-content"></div>
-    </div>
-</div>
 
 <script>
-    // --- CÓDIGO JAVASCRIPT COMPLETO ---
     const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
-    let supabaseClient = null;
-    let currentUser = null;
-    let items = [];
-    let itemCounter = 0;
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY );
 
-    function getSupabase( ) {
-        if (supabaseClient) return supabaseClient;
-        try { supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); return supabaseClient; } 
-        catch (err) { console.error("Error inicializando Supabase:", err); return null; }
+    let currentFolderId = null;
+    let signaturePad1, signaturePad2;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('create-folder-btn').addEventListener('click', createFolder);
+        document.getElementById('summary-btn').addEventListener('click', openSummaryView);
+        document.querySelectorAll('.back-to-main').forEach(btn => btn.addEventListener('click', showMainView));
+        document.getElementById('upload-btn').addEventListener('click', uploadFiles);
+        document.getElementById('save-signatures-btn').addEventListener('click', saveSignatures);
+        document.getElementById('apply-filters-btn').addEventListener('click', generateSummary);
+
+        loadFolders();
+        populateUserFilter();
+    });
+    function showView(viewId) {
+        ['main-view', 'upload-view', 'summary-view'].forEach(id => {
+            document.getElementById(id).classList.add('hidden');
+        });
+        document.getElementById(viewId).classList.remove('hidden');
     }
 
-    window.onload = () => {
-        const stored = localStorage.getItem('currentUser');
-        if (stored) {
-            try { currentUser = JSON.parse(stored); showDashboard(); } 
-            catch (e) { localStorage.removeItem('currentUser'); showLogin(); }
-        } else { showLogin(); }
-    };
-
-    function showLogin() {
-        document.getElementById('login-section').classList.remove('hidden');
-        document.getElementById('dashboard').classList.add('hidden');
-        document.getElementById('create-folder').classList.add('hidden');
-        document.getElementById('view-folder').classList.add('hidden');
-    }
-
-    async function handleLogin() {
-        const supabase = getSupabase(); if (!supabase) return;
-        const usuario = document.getElementById('usuario').value.trim();
-        const clave = document.getElementById('clave').value;
-        const mensaje = document.getElementById('mensaje');
-        mensaje.textContent = 'Verificando...';
-        if (!usuario || !clave) { mensaje.textContent = 'Ingresa usuario y contraseña'; return; }
-        try {
-            const { data, error } = await supabase.from('usuarios').select('id, usuario').eq('usuario', usuario).eq('clave', clave).single();
-            if (error || !data) { mensaje.textContent = 'Usuario o contraseña incorrectos.'; return; }
-            currentUser = data;
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            mensaje.textContent = '¡Login exitoso!';
-            setTimeout(showDashboard, 800);
-        } catch (err) { mensaje.textContent = 'Error inesperado.'; }
-    }
-
-    function handleLogout() {
-        currentUser = null;
-        localStorage.removeItem('currentUser');
-        showLogin();
-    }
-
-    function showDashboard() {
-        document.getElementById('login-section').classList.add('hidden');
-        document.getElementById('dashboard').classList.remove('hidden');
-        document.getElementById('create-folder').classList.add('hidden');
-        document.getElementById('view-folder').classList.add('hidden');
-        document.getElementById('username').textContent = currentUser.usuario || 'Usuario';
-        document.getElementById('folders-list').style.display = 'none';
-    }
-
-    function showCreateFolder() {
-        items = [];
-        itemCounter = 0;
-        document.getElementById('items-container').innerHTML = '';
-        document.getElementById('dashboard').classList.add('hidden');
-        document.getElementById('create-folder').classList.remove('hidden');
-    }
-
-    function addItemField() {
-        const index = itemCounter++;
-        const div = document.createElement('div');
-        div.className = 'item';
-        div.id = `item-field-${index}`;
-        div.innerHTML = `
-            <button type="button" class="delete-item-btn" onclick="removeItemField(${index})">×</button>
-            <label>Item</label><input type="text" id="item-${index}" required>
-            <label>Tipo de Documento</label>
-            <select id="tipo-${index}" required>
-                <option value="Cargos de Emergencia">Cargos de Emergencia</option>
-                <option value="Documentos">Documentos</option>
-                <option value="Otros">Otros</option>
-            </select>
-            <label>Observación</label><textarea id="obs-${index}" rows="2"></textarea>`;
-        document.getElementById('items-container').appendChild(div);
-        items.push(index);
-    }
-
-    function removeItemField(index) {
-        const itemToRemove = document.getElementById(`item-field-${index}`);
-        if (itemToRemove) itemToRemove.remove();
-        items = items.filter(i => i !== index);
-    }
-
-    async function createFolderAndItems() {
-        const supabase = getSupabase(); if (!supabase) return;
-        const carpeta = document.getElementById('carpeta').value.trim();
-        if (!carpeta) { alert("El nombre de la carpeta es obligatorio."); return; }
-        if (items.length === 0) { alert("Debe agregar al menos un item."); return; }
-        const { data: existing } = await supabase.from('firmas_cargos').select('carpeta').eq('carpeta', carpeta).limit(1);
-        if (existing && existing.length > 0) { alert(`Error: La carpeta "${carpeta}" ya existe.`); return; }
-        const itemsToInsert = [];
-        for (const index of items) {
-            const itemCode = document.getElementById(`item-${index}`).value.trim();
-            const tipo = document.getElementById(`tipo-${index}`).value.trim();
-            const obs = document.getElementById(`obs-${index}`).value.trim();
-            if (!itemCode || !tipo) { alert(`Uno de los items está incompleto.`); return; }
-            itemsToInsert.push({ carpeta, item: itemCode, tipo_documento: tipo, observacion: obs, created_by: currentUser.id, responsable: currentUser.usuario, estatus: 'pendiente' });
-        }
-        const { error } = await supabase.from('firmas_cargos').insert(itemsToInsert);
-        if (error) { alert('Error al guardar: ' + error.message); return; }
-        alert('Carpeta creada exitosamente');
-        loadFolder(carpeta);
-    }
-
-    function showFolderFilter() {
-        document.getElementById('folders-list').style.display = 'block';
+    function showMainView() {
+        showView('main-view');
         loadFolders();
     }
 
     async function loadFolders() {
-        const supabase = getSupabase(); if (!supabase) return;
-        const resultsContainer = document.getElementById('folders-list-results');
-        resultsContainer.innerHTML = '<h3>Cargando carpetas...</h3>';
-
-        const { data, error } = await supabase.from('firmas_cargos').select('carpeta, fecha, tipo_documento').order('fecha', { ascending: false });
-        if (error) { resultsContainer.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`; return; }
-        if (!data || data.length === 0) { resultsContainer.innerHTML = '<p>No hay carpetas creadas.</p>'; return; }
-
-        const tipoFiltro = document.getElementById('filter-tipo').value;
-        const fechaInicioStr = document.getElementById('filter-fecha-inicio').value;
-        const fechaFinStr = document.getElementById('filter-fecha-fin').value;
-
-        const carpetasMap = data.reduce((acc, item) => {
-            if (!acc.has(item.carpeta)) {
-                acc.set(item.carpeta, { fecha: item.fecha, tipos: new Set() });
-            }
-            acc.get(item.carpeta).tipos.add(item.tipo_documento);
-            return acc;
-        }, new Map());
-
-        let carpetasInfo = Array.from(carpetasMap, ([nombre, info]) => ({ carpeta: nombre, fecha: info.fecha, tipos: info.tipos }));
-
-        const filteredData = carpetasInfo.filter(info => {
-            const tipoMatch = !tipoFiltro || info.tipos.has(tipoFiltro);
-
-            let fechaMatch = true;
-            if (fechaInicioStr || fechaFinStr) {
-                const fechaItem = new Date(info.fecha);
-                fechaItem.setHours(0, 0, 0, 0);
-
-                if (fechaInicioStr) {
-                    const fechaInicio = new Date(fechaInicioStr);
-                    fechaInicio.setUTCHours(0,0,0,0);
-                    if (fechaItem < fechaInicio) fechaMatch = false;
-                }
-                if (fechaFinStr && fechaMatch) {
-                    const fechaFin = new Date(fechaFinStr);
-                    fechaFin.setUTCHours(0,0,0,0);
-                    if (fechaItem > fechaFin) fechaMatch = false;
-                }
-            }
-            
-            return tipoMatch && fechaMatch;
+        const { data, error } = await supabaseClient.from('firma_cargos').select('*').order('created_at', { ascending: false });
+        if (error) { console.error('Error loading folders:', error); return; }
+        const list = document.getElementById('folder-list');
+        list.innerHTML = '';
+        data.forEach(folder => {
+            const item = document.createElement('li');
+            item.innerHTML = `<span>${folder.nombre}</span> <span>${new Date(folder.created_at).toLocaleDateString()}</span>`;
+            item.onclick = () => openUploadView(folder.id, folder.nombre);
+            list.appendChild(item);
         });
-
-        resultsContainer.innerHTML = '<h3>Carpetas Disponibles</h3>';
-        if (filteredData.length === 0) { resultsContainer.innerHTML += '<p>No se encontraron carpetas con esos criterios.</p>'; return; }
-
-        const listContainer = document.createElement('div');
-        listContainer.className = 'folder-list-container';
-        filteredData.forEach(info => {
-            const listItem = document.createElement('div');
-            listItem.className = 'folder-list-item';
-            listItem.onclick = () => loadFolder(info.carpeta);
-            const folderName = document.createElement('span');
-            folderName.className = 'folder-name';
-            folderName.textContent = info.carpeta;
-            const folderDate = document.createElement('span');
-            folderDate.className = 'folder-date';
-            folderDate.textContent = new Date(info.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            listItem.appendChild(folderName);
-            listItem.appendChild(folderDate);
-            listContainer.appendChild(listItem);
-        });
-        resultsContainer.appendChild(listContainer);
     }
 
-
-        async function loadFolder(carpeta) {
-        const supabase = getSupabase(); if (!supabase) return;
-        const { data: items, error } = await supabase.from('firmas_cargos').select('*').eq('carpeta', carpeta).order('item');
-        if (error || items.length === 0) { alert('Error o carpeta vacía.'); return; }
-        
-        const primerItem = items[0];
-        const responsable = primerItem.responsable || 'N/A';
-        const firmaRecepcionUrl = primerItem.firma_recepcion_url;
-        const firmaReceptorUrl = primerItem.firma_receptor_url;
-        const nombreRecepcion = primerItem.nombre_recepcion || '';
-        const nombreReceptor = primerItem.nombre_receptor || '';
-        const isCompleted = !!(firmaRecepcionUrl && firmaReceptorUrl);
-
-        const headerContainer = document.getElementById('folder-info-header');
-        headerContainer.innerHTML = `
-            <div class="folder-info">
-                <h2>Carpeta: <span style="color:#d4af37;">${carpeta}</span></h2>
-                <h4>Responsable: ${responsable}</h4>
-                <div class="signatures-display">
-                    <div class="signature-box">
-                        <h5>Firma Recepción</h5>
-                        <div class="signer-name">${nombreRecepcion}</div>
-                        ${firmaRecepcionUrl ? `<img src="${firmaRecepcionUrl}?t=${new Date().getTime()}" crossorigin="anonymous">` : '<p>Pendiente</p>'}
-                    </div>
-                    <div class="signature-box">
-                        <h5>Firma Receptor</h5>
-                        <div class="signer-name">${nombreReceptor}</div>
-                        ${firmaReceptorUrl ? `<img src="${firmaReceptorUrl}?t=${new Date().getTime()}" crossorigin="anonymous">` : '<p>Pendiente</p>'}
-                    </div>
-                </div>
-            </div>`;
-        
-        const signatureContainer = document.getElementById('signature-section');
-        const isCreator = primerItem.created_by === currentUser.id;
-        let canSign = false; let roleToSign = '';
-        if (isCreator && !firmaRecepcionUrl) { canSign = true; roleToSign = 'recepcion'; } 
-        else if (!isCreator && !firmaReceptorUrl) { canSign = true; roleToSign = 'receptor'; }
-        
-        if (canSign) {
-            signatureContainer.innerHTML = `<div class="flex-center"><h3>Firmar como ${roleToSign.toUpperCase()}</h3><canvas id="canvas-folder"></canvas><div class="buttons"><button class="secondary" onclick="clearCanvas('folder')">Limpiar</button><button onclick="saveFolderSignature('${carpeta}', '${roleToSign}')">Guardar Firma</button></div></div>`;
-            setTimeout(() => initCanvas('folder'), 150);
-        } else { signatureContainer.innerHTML = ''; }
-        
-        const itemsContainer = document.getElementById('items-view');
-        itemsContainer.innerHTML = items.map(item => `
-            <div 
-                class="item ${!isCompleted ? 'editable' : ''}" 
-                ${!isCompleted ? `onclick="showEditObservationModal(${item.id}, \`${item.observacion || ''}\`)"` : ''}
-            >
-                <h4>${item.item}</h4>
-                <p>Tipo: ${item.tipo_documento}</p>
-                <p>Obs: <span id="obs-display-${item.id}">${item.observacion || '—'}</span></p>
-                <p>Estatus: ${item.estatus}</p>
-            </div>
-        `).join('');
-        
-        document.getElementById('dashboard').classList.add('hidden');
-        document.getElementById('create-folder').classList.add('hidden');
-        document.getElementById('view-folder').classList.remove('hidden');
-    }
-
-    function showEditObservationModal(itemId, currentObservation) {
-        const modal = document.getElementById('observation-modal');
-        const textarea = document.getElementById('observation-text');
-        const saveBtn = document.getElementById('save-observation-btn');
-        textarea.value = currentObservation;
-        saveBtn.onclick = () => saveObservation(itemId);
-        modal.style.display = 'flex';
-    }
-
-    function closeObservationModal() {
-        document.getElementById('observation-modal').style.display = 'none';
-    }
-
-    async function saveObservation(itemId) {
-        const supabase = getSupabase(); if (!supabase) return;
-        const newObservation = document.getElementById('observation-text').value.trim();
-        const { error } = await supabase.from('firmas_cargos').update({ observacion: newObservation }).eq('id', itemId);
-        if (error) { alert('Error al guardar la observación: ' + error.message); } 
-        else {
-            const obsDisplay = document.getElementById(`obs-display-${itemId}`);
-            if (obsDisplay) obsDisplay.textContent = newObservation || '—';
-            closeObservationModal();
-        }
-    }
-
-    async function saveFolderSignature(carpeta, role) {
-        const supabase = getSupabase(); if (!supabase) return;
-        const canvas = document.getElementById('canvas-folder'); if (!canvas) return;
-        const dataURL = canvas.toDataURL('image/png'); const blob = dataURLtoBlob(dataURL);
-        const path = `${carpeta}/_folder_${role}_${Date.now()}.png`;
-        const { error: uploadErr } = await supabase.storage.from('firma_cargos').upload(path, blob, { contentType: 'image/png' });
-        if (uploadErr) { alert('Error al subir firma: ' + uploadErr.message); return; }
-        const { data: urlData } = supabase.storage.from('firma_cargos').getPublicUrl(path);
-        const publicUrl = urlData.publicUrl;
-        const updateData = {};
-        if (role === 'recepcion') {
-            updateData.firma_recepcion_url = publicUrl;
-            updateData.signed_by_recepcion = currentUser.id;
-            updateData.nombre_recepcion = currentUser.usuario;
-        } else {
-            updateData.firma_receptor_url = publicUrl;
-            updateData.signed_by_receptor = currentUser.id;
-            updateData.nombre_receptor = currentUser.usuario;
-        }
-        const { data: primerItem } = await supabase.from('firmas_cargos').select('firma_receptor_url, firma_recepcion_url').eq('carpeta', carpeta).limit(1).single();
-        if (primerItem) {
-            const bothSigned = (updateData.firma_recepcion_url && primerItem.firma_receptor_url) || (updateData.firma_receptor_url && primerItem.firma_recepcion_url);
-            updateData.estatus = bothSigned ? 'completado' : 'firmado_parcial';
-        }
-        const { error } = await supabase.from('firmas_cargos').update(updateData).eq('carpeta', carpeta);
-        if (error) { alert('Error al actualizar carpeta: ' + error.message); } 
-        else { alert('Firma guardada exitosamente'); loadFolder(carpeta); }
-    }
-
-    function initCanvas(idx) {
-        const canvas = document.getElementById(`canvas-${idx}`); if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = canvas.offsetWidth * dpr; canvas.height = canvas.offsetHeight * dpr;
-        ctx.scale(dpr, dpr);
-        ctx.strokeStyle = '#000000'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        let isDrawing = false; let lastX = 0; let lastY = 0; let lastTime = 0; let lastLineWidth = 3.5;
-        function getPosition(e) { const rect = canvas.getBoundingClientRect(); return { x: (e.clientX || e.touches[0].clientX) - rect.left, y: (e.clientY || e.touches[0].clientY) - rect.top }; }
-        function draw(e) {
-            if (!isDrawing) return; e.preventDefault();
-            const pos = getPosition(e); const currentTime = Date.now(); const timeDiff = currentTime - lastTime || 1;
-            const distance = Math.sqrt(Math.pow(pos.x - lastX, 2) + Math.pow(pos.y - lastY, 2));
-            const velocity = distance / timeDiff;
-            const lineWidth = Math.max(2.5, Math.min(7.0, 7.0 - velocity * 1.5));
-            ctx.lineWidth = (lineWidth + lastLineWidth) / 2;
-            ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
-            [lastX, lastY, lastTime, lastLineWidth] = [pos.x, pos.y, currentTime, lineWidth];
-        }
-        function startDrawing(e) {
-            e.preventDefault(); isDrawing = true; const pos = getPosition(e);
-            [lastX, lastY] = [pos.x, pos.y]; lastTime = Date.now(); lastLineWidth = 3.5;
-            ctx.beginPath(); ctx.arc(pos.x, pos.y, lastLineWidth / 2, 0, Math.PI * 2); ctx.fillStyle = '#000000'; ctx.fill();
-        }
-        function stopDrawing() { isDrawing = false; ctx.beginPath(); }
-        canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
-        canvas.addEventListener('touchstart', startDrawing); canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('touchend', stopDrawing); canvas.addEventListener('touchcancel', stopDrawing);
-    }
-
-    function clearCanvas(idx) { const canvas = document.getElementById(`canvas-${idx}`); if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); } }
-
-    function dataURLtoBlob(dataurl) {
-        const arr = dataurl.split(',');
-        const mime = arr[0].match(/:(.*?);/)[1];
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) u8arr[n] = bstr.charCodeAt(n);
-        return new Blob([u8arr], {type: mime});
-    }
-
-    function backToDashboard() {
-        document.getElementById('create-folder').classList.add('hidden');
-        document.getElementById('view-folder').classList.add('hidden');
-        document.getElementById('dashboard').classList.remove('hidden');
-        document.getElementById('folders-list').style.display = 'none';
-    }
-
-    // =================================================================
-    // --- LÓGICA DE RESUMEN CON FILTROS MEJORADA ---
-    // =================================================================
-    
-    // NUEVA FUNCIÓN: Carga los usuarios en el ComboBox del filtro
-    async function populateUserFilter() {
-        const supabase = getSupabase(); if (!supabase) return;
-        const userSelect = document.getElementById('summary-filter-recepcion');
-        
-        // Evita duplicar usuarios si ya se cargaron
-        if (userSelect.options.length > 1) return;
-
-        const { data: usuarios, error } = await supabase.from('usuarios').select('usuario').order('usuario');
-        if (error) {
-            console.error("Error cargando usuarios:", error);
+    async function createFolder() {
+        const user = prompt("Ingrese su nombre de usuario (Recepción):");
+        if (!user || user.trim() === '') {
+            alert("El nombre de usuario es obligatorio.");
             return;
         }
+        const folderName = `Cargo_${new Date().toISOString().split('T')[0]}_${user.trim()}`;
+        const { data, error } = await supabaseClient.from('firma_cargos').insert([{ nombre: folderName, usuario: user.trim() }]).select();
+        if (error) { console.error('Error creating folder:', error); return; }
+        loadFolders();
+    }
 
-        usuarios.forEach(user => {
+    function openUploadView(folderId, folderName) {
+        currentFolderId = folderId;
+        document.getElementById('upload-view-title').textContent = `Folder: ${folderName}`;
+        showView('upload-view');
+        loadFiles(folderId);
+        setupCanvases();
+    }
+
+    async function loadFiles(folderId) {
+        const { data, error } = await supabaseClient.storage.from('firma_cargos').list(folderId.toString());
+        if (error) { console.error('Error loading files:', error); return; }
+        const list = document.getElementById('file-list');
+        list.innerHTML = '';
+        data.forEach(file => {
+            const item = document.createElement('li');
+            item.textContent = file.name;
+            list.appendChild(item);
+        });
+        if (data.length > 0) {
+            document.getElementById('signature-section').classList.remove('hidden');
+        }
+    }
+
+    async function uploadFiles() {
+        const files = document.getElementById('file-input').files;
+        if (files.length === 0) { alert('Seleccione al menos un archivo.'); return; }
+        const uploadBtn = document.getElementById('upload-btn');
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Subiendo...';
+        for (const file of files) {
+            const { error } = await supabaseClient.storage.from('firma_cargos').upload(`${currentFolderId}/${file.name}`, file);
+            if (error) { console.error('Error uploading file:', error); alert(`Error al subir ${file.name}`); }
+        }
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Subir Archivos';
+        loadFiles(currentFolderId);
+    }
+
+    function setupCanvases() {
+        const canvas1 = document.getElementById('signature-canvas-1');
+        const canvas2 = document.getElementById('signature-canvas-2');
+        
+        // Ajustar tamaño del canvas al contenedor
+        function resizeCanvas(canvas) {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+        }
+        
+        resizeCanvas(canvas1);
+        resizeCanvas(canvas2);
+
+        signaturePad1 = new SignaturePad(canvas1);
+        signaturePad2 = new SignaturePad(canvas2);
+    }
+
+    function clearCanvas(canvasId) {
+        if (canvasId === 'signature-canvas-1') signaturePad1.clear();
+        if (canvasId === 'signature-canvas-2') signaturePad2.clear();
+    }
+
+    async function saveSignatures() {
+        if (signaturePad1.isEmpty() || signaturePad2.isEmpty()) { alert('Ambas firmas son requeridas.'); return; }
+        const saveBtn = document.getElementById('save-signatures-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Guardando...';
+
+        const sig1 = signaturePad1.toDataURL();
+        const sig2 = signaturePad2.toDataURL();
+        const { error: err1 } = await supabaseClient.storage.from('firma_cargos').upload(`${currentFolderId}/firma1.png`, dataURLToBlob(sig1), { upsert: true });
+        const { error: err2 } = await supabaseClient.storage.from('firma_cargos').upload(`${currentFolderId}/firma2.png`, dataURLToBlob(sig2), { upsert: true });
+        
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Guardar Firmas y Finalizar';
+
+        if (err1 || err2) { console.error('Error saving signatures:', err1 || err2); alert('Error al guardar las firmas.'); return; }
+        alert('Firmas guardadas correctamente.');
+        showMainView();
+    }
+
+    function dataURLToBlob(dataURL) {
+        const parts = dataURL.split(';base64,');
+        const contentType = parts[0].split(':')[1];
+        const raw = window.atob(parts[1]);
+        const rawLength = raw.length;
+        const uInt8Array = new Uint8Array(rawLength);
+        for (let i = 0; i < rawLength; ++i) {
+            uInt8Array[i] = raw.charCodeAt(i);
+        }
+        return new Blob([uInt8Array], { type: contentType });
+    }
+
+    async function populateUserFilter() {
+        const { data, error } = await supabaseClient.from('usuarios').select('usuario').order('usuario');
+        if (error) { console.error('Error populating user filter:', error); return; }
+        const select = document.getElementById('user-filter');
+        // Limpiar opciones existentes excepto la primera ("Todos")
+        select.innerHTML = '<option value="">Todos</option>';
+        data.forEach(user => {
             const option = document.createElement('option');
             option.value = user.usuario;
             option.textContent = user.usuario;
-            userSelect.appendChild(option);
+            select.appendChild(option);
         });
     }
 
-    // FUNCIÓN MODIFICADA: Ahora carga los usuarios antes de mostrar
-    async function openSummaryView() {
-        await populateUserFilter(); // Espera a que los usuarios se carguen
-        document.getElementById('summary-view').style.display = 'flex';
-        generateSummary(); // Genera el resumen con filtros vacíos al abrir
+    function openSummaryView() {
+        showView('summary-view');
+        const resultsContainer = document.getElementById('summary-results');
+        resultsContainer.innerHTML = `
+            <div class="mensaje-inicial">
+                <p>Por favor, aplique un filtro para generar el resumen de impresión.</p>
+            </div>
+        `;
     }
 
-    // FUNCIÓN MODIFICADA: Lee del ComboBox y ajusta el filtro
     async function generateSummary() {
-        const supabase = getSupabase(); if (!supabase) return;
-        const summaryContent = document.getElementById('summary-content');
-        summaryContent.innerHTML = '<h2>Generando resumen, por favor espera...</h2>';
+        const resultsContainer = document.getElementById('summary-results');
+        resultsContainer.innerHTML = '<p>Generando resumen, por favor espere...</p>';
 
-        try {
-            const { data, error } = await supabase.from('firmas_cargos').select('*').order('fecha', { ascending: false });
-            if (error) throw error;
+        const userFilter = document.getElementById('user-filter').value;
+        const startDateFilter = document.getElementById('start-date-filter').value;
+        const endDateFilter = document.getElementById('end-date-filter').value;
 
-            if (!data || data.length === 0) {
-                summaryContent.innerHTML = '<h2>No hay datos para mostrar en el resumen.</h2>';
-                return;
+        let query = supabaseClient.from('firma_cargos').select('*');
+        if (userFilter) query = query.eq('usuario', userFilter);
+        if (startDateFilter) query = query.gte('created_at', startDateFilter);
+        if (endDateFilter) {
+            const nextDay = new Date(endDateFilter);
+            nextDay.setDate(nextDay.getDate() + 1);
+            query = query.lt('created_at', nextDay.toISOString().split('T')[0]);
+        }
+        query = query.order('created_at', { ascending: false });
+
+        const { data: folders, error } = await query;
+        if (error) { resultsContainer.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`; return; }
+        if (folders.length === 0) { resultsContainer.innerHTML = '<p>No se encontraron cargos con los filtros aplicados.</p>'; return; }
+
+        resultsContainer.innerHTML = ''; 
+
+        for (const folder of folders) {
+            const page = document.createElement('div');
+            page.className = 'summary-page';
+            page.style.border = '1px solid #000';
+            page.style.padding = '20px';
+            page.style.margin = '20px 0';
+            page.style.background = 'white';
+
+            page.innerHTML = `<h3>Resumen de Cargo: ${folder.nombre}</h3><p>Usuario: ${folder.usuario}</p><p>Fecha: ${new Date(folder.created_at).toLocaleString()}</p>`;
+            
+            const { data: files, error: filesError } = await supabaseClient.storage.from('firma_cargos').list(folder.id.toString());
+            if (filesError) continue;
+
+            const imageFiles = files.filter(f => f.name !== 'firma1.png' && f.name !== 'firma2.png');
+            const firma1File = files.find(f => f.name === 'firma1.png');
+            const firma2File = files.find(f => f.name === 'firma2.png');
+
+            page.innerHTML += '<h4>Imágenes del Cargo:</h4>';
+            for (const file of imageFiles) {
+                const { data: urlData } = supabaseClient.storage.from('firma_cargos').getPublicUrl(`${folder.id}/${file.name}`);
+                page.innerHTML += `<img src="${urlData.publicUrl}" width="200" style="margin:5px; border: 1px solid #ddd;">`;
             }
 
-            const folders = data.reduce((acc, item) => {
-                if (!acc[item.carpeta]) {
-                    acc[item.carpeta] = {
-                        items: [],
-                        fecha: item.fecha,
-                        firma_recepcion_url: item.firma_recepcion_url,
-                        nombre_recepcion: item.nombre_recepcion,
-                        firma_receptor_url: item.firma_receptor_url,
-                        nombre_receptor: item.nombre_receptor,
-                        tipos: new Set()
-                    };
-                }
-                acc[item.carpeta].items.push(item);
-                acc[item.carpeta].tipos.add(item.tipo_documento);
-                return acc;
-            }, {});
-
-            let allFolders = Object.entries(folders).map(([name, data]) => ({ name, ...data }));
-
-            // CAMBIO: Lee el valor del ComboBox
-            const recepcionFiltro = document.getElementById('summary-filter-recepcion').value;
-            const tipoFiltro = document.getElementById('summary-filter-tipo').value;
-            const fechaInicioStr = document.getElementById('summary-filter-inicio').value;
-            const fechaFinStr = document.getElementById('summary-filter-fin').value;
-
-            const filteredFolders = allFolders.filter(folder => {
-                // CAMBIO: Comparación exacta con el valor del ComboBox
-                const recepcionMatch = !recepcionFiltro || folder.nombre_recepcion === recepcionFiltro;
-                const tipoMatch = !tipoFiltro || folder.tipos.has(tipoFiltro);
-                
-                let fechaMatch = true;
-                if (fechaInicioStr || fechaFinStr) {
-                    const fechaItem = new Date(folder.fecha);
-                    fechaItem.setHours(0, 0, 0, 0);
-                    if (fechaInicioStr) {
-                        const fechaInicio = new Date(fechaInicioStr);
-                        fechaInicio.setUTCHours(0,0,0,0);
-                        if (fechaItem < fechaInicio) fechaMatch = false;
-                    }
-                    if (fechaFinStr && fechaMatch) {
-                        const fechaFin = new Date(fechaFinStr);
-                        fechaFin.setUTCHours(0,0,0,0);
-                        if (fechaItem > fechaFin) fechaMatch = false;
-                    }
-                }
-                return recepcionMatch && tipoMatch && fechaMatch;
-            });
-
-            if (filteredFolders.length === 0) {
-                summaryContent.innerHTML = '<h2>No se encontraron resultados con los filtros aplicados.</h2>';
-                return;
+            page.innerHTML += '<h4>Firmas:</h4>';
+            if (firma1File) {
+                const { data: urlData } = supabaseClient.storage.from('firma_cargos').getPublicUrl(`${folder.id}/firma1.png`);
+                page.innerHTML += `<img src="${urlData.publicUrl}" width="200" style="border:1px solid #000; margin:5px; background-color: #f8f8f8;">`;
             }
-
-            let allPagesHTML = '';
-            const itemsPerPage = 10;
-            let globalItemCounter = 1;
-            let currentPageHTML = '';
-            let itemsOnCurrentPage = 0;
-
-            for (const folderData of filteredFolders) {
-                if (itemsOnCurrentPage > 0 && itemsOnCurrentPage >= itemsPerPage) {
-                    currentPageHTML += `</tbody></table></div>`;
-                    allPagesHTML += currentPageHTML;
-                    currentPageHTML = '';
-                    itemsOnCurrentPage = 0;
-                }
-
-                if (itemsOnCurrentPage === 0) {
-                    currentPageHTML = `<div class="summary-page"><h1>Resumen de Cargos</h1><table class="summary-table"><thead><tr><th>#</th><th>Carpeta</th><th>Items</th><th>Recepción</th><th>Fecha Creación</th><th>Firma Recepción</th><th>Firma Receptor</th></tr></thead><tbody>`;
-                }
-
-                const fechaCreacion = new Date(folderData.fecha).toLocaleDateString('es-ES');
-                const firmaRecepcionHTML = folderData.firma_recepcion_url ? `<div class="signer-info"><img src="${folderData.firma_recepcion_url}?t=${new Date().getTime()}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_recepcion || ''}</span></div>` : 'Pendiente';
-                const firmaReceptorHTML = folderData.firma_receptor_url ? `<div class="signer-info"><img src="${folderData.firma_receptor_url}?t=${new Date().getTime()}" alt="Firma" crossorigin="anonymous"><span class="signer-name">${folderData.nombre_receptor || ''}</span></div>` : 'Pendiente';
-
-                currentPageHTML += `<tr><td>${globalItemCounter}</td><td>${folderData.name}</td><td>${folderData.items.length}</td><td>${folderData.nombre_recepcion || 'N/A'}</td><td>${fechaCreacion}</td><td>${firmaRecepcionHTML}</td><td>${firmaReceptorHTML}</td></tr>`;
-                
-                itemsOnCurrentPage++;
-                globalItemCounter++;
+            if (firma2File) {
+                const { data: urlData } = supabaseClient.storage.from('firma_cargos').getPublicUrl(`${folder.id}/firma2.png`);
+                page.innerHTML += `<img src="${urlData.publicUrl}" width="200" style="border:1px solid #000; margin:5px; background-color: #f8f8f8;">`;
             }
-
-            if (itemsOnCurrentPage > 0) {
-                currentPageHTML += `</tbody></table></div>`;
-                allPagesHTML += currentPageHTML;
-            }
-
-            summaryContent.innerHTML = allPagesHTML;
-
-        } catch (err) {
-            summaryContent.innerHTML = `<h2>Error al generar el resumen: ${err.message}</h2>`;
+            resultsContainer.appendChild(page);
         }
     }
-
-    document.getElementById('export-pdf-btn').addEventListener('click', () => {
-        const { jsPDF } = window.jspdf;
-        const pages = document.querySelectorAll('.summary-page');
-        if (pages.length === 0) return alert('No hay nada que exportar.');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const promises = [];
-        pages.forEach(page => { promises.push(html2canvas(page, { scale: 2, useCORS: true })); });
-        Promise.all(promises).then(canvases => {
-            canvases.forEach((canvas, index) => {
-                if (index > 0) pdf.addPage();
-                const imgData = canvas.toDataURL('image/png');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = pdf.internal.pageSize.getHeight();
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            });
-            pdf.save('resumen_cargos_filtrado.pdf');
-        });
-    });
-
-    document.getElementById('export-jpg-btn').addEventListener('click', () => {
-        const summaryContent = document.getElementById('summary-content');
-        if (!summaryContent.hasChildNodes() || summaryContent.querySelectorAll('.summary-page').length === 0) return alert('No hay nada que exportar.');
-        html2canvas(summaryContent, { scale: 2, useCORS: true, windowWidth: summaryContent.scrollWidth, windowHeight: summaryContent.scrollHeight }).then(canvas => {
-            const link = document.createElement('a');
-            link.href = canvas.toDataURL('image/jpeg', 0.9);
-            link.download = 'resumen_cargos_filtrado.jpg';
-            link.click();
-        });
-    });
-
 </script>
 </body>
 </html>
