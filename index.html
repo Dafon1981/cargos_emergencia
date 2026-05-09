@@ -341,75 +341,87 @@
     }
 
     
-       async function saveNewCargo() {
-        const supabase = getSupabase(); 
-        if (!supabase) return;
+        async function saveNewCargo() {
+        try {
+            const supabase = getSupabase(); 
+            if (!supabase) {
+                alert("Error de conexión con la base de datos.");
+                return;
+            }
 
-        const textoCargo = document.getElementById('cargo-text').value.trim();
-        const receptorSelect = document.getElementById('receptor-select');
-        const receptorId = receptorSelect.value;
-        const receptorName = receptorSelect.options[receptorSelect.selectedIndex]?.text;
-        const canvas = document.getElementById('canvas-create');
+            const textoCargo = document.getElementById('cargo-text').value.trim();
+            const receptorSelect = document.getElementById('receptor-select');
+            const receptorId = receptorSelect.value;
+            const receptorName = receptorSelect.options[receptorSelect.selectedIndex]?.text;
+            const canvas = document.getElementById('canvas-create');
 
-        if (!textoCargo) { 
-            alert("Por favor, ingresa el texto del cargo."); 
-            return; 
-        }
-        if (!receptorId) { 
-            alert("Por favor, selecciona un receptor."); 
-            return; 
-        }
+            if (!textoCargo) { 
+                alert("Por favor, ingresa el texto del cargo."); 
+                return; 
+            }
+            if (!receptorId) { 
+                alert("Por favor, selecciona un receptor."); 
+                return; 
+            }
 
-        // Verificar si el canvas está vacío (si no ha firmado)
-        const blank = document.createElement('canvas');
-        blank.width = canvas.width; 
-        blank.height = canvas.height;
-        if (canvas.toDataURL() === blank.toDataURL()) { 
-            alert("Por favor, firma el cargo antes de enviar."); 
-            return; 
-        }
+            // Verificar si el canvas está vacío (si no ha firmado)
+            const blank = document.createElement('canvas');
+            blank.width = canvas.width; 
+            blank.height = canvas.height;
+            if (canvas.toDataURL() === blank.toDataURL()) { 
+                alert("Por favor, firma el cargo antes de enviar."); 
+                return; 
+            }
 
-        // 1. Generar un nombre de carpeta único automáticamente
-        const carpetaGenerada = `CARGO-${Date.now()}`;
+            // 1. Generar un nombre de carpeta único automáticamente
+            const carpetaGenerada = `CARGO-${Date.now()}`;
 
-        // 2. Convertir la firma a formato Blob para subirla
-        const dataURL = canvas.toDataURL('image/png');
-        const blob = dataURLtoBlob(dataURL);
-        const path = `${carpetaGenerada}/_firma_creador_${Date.now()}.png`;
+            // 2. Convertir la firma a formato Blob para subirla
+            const dataURL = canvas.toDataURL('image/png');
+            const blob = dataURLtoBlob(dataURL);
+            const path = `${carpetaGenerada}/_firma_creador_${Date.now()}.png`;
 
-        // 3. Subir la firma al Storage de Supabase
-        const { error: uploadErr } = await supabase.storage.from('firma_cargos').upload(path, blob, { contentType: 'image/png' });
-        if (uploadErr) { 
-            alert('Error al subir la firma: ' + uploadErr.message); 
-            return; 
-        }
+            // 3. Subir la firma al Storage de Supabase
+            const { error: uploadErr } = await supabase.storage.from('firma_cargos').upload(path, blob, { contentType: 'image/png' });
+            if (uploadErr) { 
+                alert('Error al subir la firma al Storage: ' + uploadErr.message); 
+                return; 
+            }
 
-        // 4. Obtener la URL pública de la firma subida
-        const { data: urlData } = supabase.storage.from('firma_cargos').getPublicUrl(path);
-        const publicUrl = urlData.publicUrl;
+            // 4. Obtener la URL pública de la firma subida
+            const { data: urlData } = supabase.storage.from('firma_cargos').getPublicUrl(path);
+            const publicUrl = urlData.publicUrl;
 
-        // 5. Guardar todos los datos en la tabla firmas_cargos
-        const { error } = await supabase.from('firmas_cargos').insert([{
-            carpeta: carpetaGenerada,
-            item: textoCargo,
-            tipo_documento: 'Cargos de Emergencia',
-            created_by: currentUser.id,
-            responsable: currentUser.usuario,
-            nombre_recepcion: currentUser.usuario,
-            signed_by_recepcion: currentUser.id,
-            firma_recepcion_url: publicUrl,
-            nombre_receptor: receptorName,
-            estatus: 'inconcluso' // Estado inicial porque falta la firma del receptor
-        }]);
+            // 5. Guardar todos los datos en la tabla firmas_cargos
+            const { error } = await supabase.from('firmas_cargos').insert([{
+                carpeta: carpetaGenerada,
+                item: textoCargo,
+                tipo_documento: 'Cargos de Emergencia',
+                created_by: currentUser.id,
+                responsable: currentUser.usuario,
+                nombre_recepcion: currentUser.usuario,
+                signed_by_recepcion: currentUser.id,
+                firma_recepcion_url: publicUrl,
+                nombre_receptor: receptorName,
+                signed_by_receptor: receptorId, // <-- VITAL para que el receptor lo vea
+                estatus: 'inconcluso'
+            }]);
 
-        if (error) {
-            alert('Error al guardar el cargo en la base de datos: ' + error.message);
-        } else {
-            alert('Cargo creado y firmado exitosamente.');
-            backToDashboard(); // Volver al menú principal
+            if (error) {
+                alert('Error al guardar el cargo en la base de datos: ' + error.message);
+            } else {
+                alert('Cargo creado y firmado exitosamente.');
+                document.getElementById('cargo-text').value = ''; // Limpiar texto
+                clearCanvas('create'); // Limpiar firma
+                backToDashboard(); // Volver al menú principal
+            }
+
+        } catch (err) {
+            // Si hay CUALQUIER error oculto, esto lo mostrará en pantalla
+            alert("Error inesperado en el código: " + err.message);
+            console.error(err);
         }
     }
-
 
 
 
