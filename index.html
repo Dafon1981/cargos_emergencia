@@ -172,14 +172,15 @@
     </div>
 
 </div>
+
 <script>
     const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
     
     let supabaseClient = null;
     let currentUser = null;
-    let currentCargoId = null; // Para saber qué cargo estamos viendo/editando
-    let currentMode = 'dashboard'; // 'dashboard', 'search', 'report'
+    let currentCargoId = null; 
+    let currentMode = 'dashboard'; 
 
     function getSupabase( ) {
         if (supabaseClient) return supabaseClient;
@@ -252,11 +253,11 @@
         const resultsContainer = document.getElementById('dashboard-results');
         resultsContainer.innerHTML = '<p>Cargando...</p>';
 
-        // Buscar cargos donde el usuario es creador O receptor
+        // Buscar cargos donde el usuario es creador O receptor (usando signed_by_receptor)
         const { data, error } = await supabase
             .from('firmas_cargos')
             .select('*')
-            .or(`created_by.eq.${currentUser.id},receptor_id.eq.${currentUser.id}`)
+            .or(`created_by.eq.${currentUser.id},signed_by_receptor.eq.${currentUser.id}`)
             .order('fecha', { ascending: false })
             .limit(20);
 
@@ -274,7 +275,6 @@
             const badgeClass = isCompletado ? 'badge-green' : 'badge-red';
             const statusText = isCompletado ? 'Completado' : 'Inconcluso';
             
-            // Determinar el título a mostrar (resumen del texto)
             let titulo = cargo.observacion ? cargo.observacion.substring(0, 50) : 'Cargo sin texto';
             if (cargo.observacion && cargo.observacion.length > 50) titulo += '...';
 
@@ -344,15 +344,11 @@
         const supabase = getSupabase(); if (!supabase) return;
         const canvas = document.getElementById('canvas-creador');
         
-        // Verificar si el canvas está en blanco (lógica simple: si no se ha dibujado, no guardar)
-        // Nota: Una validación perfecta de canvas en blanco es compleja, asumimos que el usuario firmó si hizo clic.
-        
         const texto = document.getElementById('nuevo-cargo-texto').value.trim();
         const receptorSelect = document.getElementById('nuevo-cargo-receptor');
         const receptorId = receptorSelect.value;
         const receptorNombre = receptorSelect.options[receptorSelect.selectedIndex].text;
         
-        // Subir firma del creador
         const dataURL = canvas.toDataURL('image/png'); 
         const blob = dataURLtoBlob(dataURL);
         const fileName = `cargo_${Date.now()}_creador.png`;
@@ -363,17 +359,16 @@
         const { data: urlData } = supabase.storage.from('firma_cargos').getPublicUrl(fileName);
         const firmaCreadorUrl = urlData.publicUrl;
 
-        // Guardar en base de datos
-        // Usamos la columna 'observacion' para guardar el texto del cargo para mantener compatibilidad con tu tabla
+        // Guardar en base de datos usando signed_by_receptor
         const { error } = await supabase.from('firmas_cargos').insert([{
             observacion: texto,
             created_by: currentUser.id,
-            responsable: currentUser.usuario, // Nombre del creador
-            firma_recepcion_url: firmaCreadorUrl, // Usamos esto como firma del creador
-            receptor_id: receptorId, // Necesitarás crear esta columna en tu tabla si no existe
+            responsable: currentUser.usuario, 
+            firma_recepcion_url: firmaCreadorUrl, 
+            signed_by_receptor: receptorId, // <-- CORREGIDO AQUÍ
             nombre_receptor: receptorNombre,
             estatus: 'inconcluso',
-            tipo_documento: 'Cargo Personalizado' // Valor por defecto
+            tipo_documento: 'Cargo Personalizado'
         }]);
 
         if (error) { alert('Error al guardar el cargo: ' + error.message); return; }
@@ -411,9 +406,8 @@
         receptorArea.classList.add('hidden');
         btnEliminar.classList.add('hidden');
 
-        // Lógica de permisos
         const isCreator = cargo.created_by === currentUser.id;
-        const isReceptor = cargo.receptor_id == currentUser.id; // Usamos == por si uno es string y otro int
+        const isReceptor = cargo.signed_by_receptor == currentUser.id; // <-- CORREGIDO AQUÍ
         const isCompleted = cargo.estatus === 'completado';
 
         if (isCreator && !isCompleted) {
@@ -494,7 +488,6 @@
 
         let query = supabase.from('firmas_cargos').select('*').order('fecha', { ascending: false });
 
-        // Filtro de fechas
         if (fechaInicioStr) {
             const start = new Date(fechaInicioStr); start.setUTCHours(0,0,0,0);
             query = query.gte('fecha', start.toISOString());
@@ -520,7 +513,6 @@
             return;
         }
 
-        // Obtener los datos de nuevo basados en las fechas para generar el PDF
         const supabase = getSupabase(); if (!supabase) return;
         const fechaInicioStr = document.getElementById('sr-desde').value;
         const fechaFinStr = document.getElementById('sr-hasta').value;
@@ -559,7 +551,7 @@
             pdfContainer.innerHTML += html;
         });
 
-        pdfContainer.style.display = 'block'; // Mostrar temporalmente para renderizar
+        pdfContainer.style.display = 'block'; 
 
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
@@ -576,7 +568,7 @@
             console.error("Error generando PDF:", err);
             alert("Hubo un problema al generar el PDF.");
         } finally {
-            pdfContainer.style.display = 'none'; // Ocultar de nuevo
+            pdfContainer.style.display = 'none'; 
             pdfContainer.innerHTML = '';
         }
     }
@@ -625,5 +617,8 @@
         return new Blob([u8arr], {type: mime});
     }
 </script>
+
+
+    
 </body>
 </html>
