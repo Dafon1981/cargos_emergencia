@@ -25,11 +25,11 @@
         button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: transform 0.2s; color: white; flex-grow: 1; max-width: 250px; }
         button:hover { transform: translateY(-2px); }
         
-        .btn-green { background: #2e7d32; } /* Nuevo Cargo */
-        .btn-yellow { background: #fbc02d; color: #000; } /* Búsqueda */
-        .btn-blue { background: #1565c0; } /* Reporte */
-        .btn-red { background: #c62828; } /* Cerrar Sesión / Eliminar */
-        .btn-gray { background: #555; } /* Volver / Cancelar */
+        .btn-green { background: #2e7d32; } 
+        .btn-yellow { background: #fbc02d; color: #000; } 
+        .btn-blue { background: #1565c0; } 
+        .btn-red { background: #c62828; } 
+        .btn-gray { background: #555; } 
 
         .hidden { display: none !important; }
         .flex-center { display: flex; justify-content: center; align-items: center; flex-direction: column; }
@@ -54,13 +54,13 @@
         .signature-box h4 { color: #aaa; font-size: 0.9rem; margin-bottom: 5px; }
         .signature-box p { color: #d4af37; font-weight: bold; }
 
-        /* Reporte PDF */
-        #pdf-container { position: absolute; left: -9999px; top: -9999px; }
-        .pdf-page { background: white; color: black; width: 210mm; min-height: 297mm; padding: 20mm; font-family: Arial, sans-serif; }
+        /* Reporte PDF y Vista Previa */
+        #report-preview-container { background: white; color: black; padding: 20px; border-radius: 8px; margin-top: 20px; overflow-x: auto; }
+        .pdf-page { background: white; color: black; width: 100%; max-width: 210mm; margin: 0 auto; font-family: Arial, sans-serif; }
         .pdf-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
-        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 8px; text-align: left; }
+        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 8px; text-align: left; vertical-align: middle; }
         .pdf-table th { background: #f0f0f0; }
-        .pdf-sign-img { max-height: 40px; }
+        .pdf-sign-img { max-height: 40px; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -70,7 +70,8 @@
     <div id="login-section" class="card flex-center">
         <h1>Iniciar Sesión</h1>
         <input type="text" id="usuario" placeholder="Usuario">
-        <input type="password" id="clave" placeholder="Contraseña">
+        <!-- CAMBIO: type="text" para quitar asteriscos -->
+        <input type="text" id="clave" placeholder="Contraseña">
         <div class="buttons"><button class="btn-blue" onclick="handleLogin()">Entrar</button></div>
         <p id="login-msg" style="color: #ff9800; margin-top: 10px;"></p>
     </div>
@@ -132,10 +133,17 @@
         <label>Desde:</label> <input type="date" id="report-start">
         <label>Hasta:</label> <input type="date" id="report-end">
         <div class="buttons">
-            <button class="btn-blue" onclick="generateReport()">Generar PDF</button>
+            <!-- CAMBIO: Botón para Vista Previa y Botón para Descargar -->
+            <button class="btn-blue" onclick="previewReport()">Ver Vista Previa</button>
+            <button id="btn-download-pdf" class="btn-green hidden" onclick="downloadPDF()">Descargar PDF</button>
             <button class="btn-gray" onclick="showView('dashboard')">Cancelar</button>
         </div>
         <p id="report-msg" style="text-align: center; margin-top: 15px; color: #d4af37;"></p>
+
+        <!-- CAMBIO: Contenedor de Vista Previa -->
+        <div id="report-preview-container" class="hidden">
+            <div id="pdf-content" class="pdf-page"></div>
+        </div>
     </div>
 
     <!-- VISTA: DETALLE DEL CARGO (Para ver y firmar) -->
@@ -162,9 +170,6 @@
             <button id="btn-delete-cargo" class="btn-red hidden" onclick="deleteCargo()">Eliminar Cargo</button>
         </div>
     </div>
-
-    <!-- Contenedor oculto para armar el PDF -->
-    <div id="pdf-container"></div>
 </div>
 <script>
     const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
@@ -172,7 +177,7 @@
     
     let supabaseClient = null;
     let currentUser = null;
-    let currentCargoId = null; // Para saber qué cargo estamos viendo/editando
+    let currentCargoId = null;
 
     function getSupabase( ) {
         if (supabaseClient) return supabaseClient;
@@ -211,6 +216,10 @@
         } else if (viewId === 'create-view') {
             loadReceptors();
             setTimeout(() => initCanvas('create'), 100);
+        } else if (viewId === 'report-view') {
+            document.getElementById('report-preview-container').classList.add('hidden');
+            document.getElementById('btn-download-pdf').classList.add('hidden');
+            document.getElementById('report-msg').textContent = '';
         }
     }
 
@@ -251,7 +260,6 @@
         listDiv.innerHTML = 'Cargando...';
 
         try {
-            // Cargar cargos donde el usuario es creador O receptor
             const { data, error } = await supabase.from('firmas_cargos')
                 .select('*')
                 .or(`created_by.eq.${currentUser.id},signed_by_receptor.eq.${currentUser.id}`)
@@ -277,8 +285,6 @@
             const statusClass = isCompleted ? 'status-green' : 'status-red';
             const statusText = isCompleted ? 'Cargo Completado' : 'Cargo Inconcluso';
             const itemClass = isCompleted ? 'completado' : 'inconcluso';
-            
-            // Mostrar un extracto del texto
             const extract = cargo.item.length > 50 ? cargo.item.substring(0, 50) + '...' : cargo.item;
 
             return `
@@ -313,11 +319,15 @@
     async function saveNewCargo() {
         try {
             const supabase = getSupabase(); if (!supabase) return;
-            const textoCargo = document.getElementById('cargo-text').value.trim();
+            const cargoInput = document.getElementById('cargo-text');
             const receptorSelect = document.getElementById('receptor-select');
+            const canvas = document.getElementById('canvas-create');
+
+            if (!cargoInput || !receptorSelect || !canvas) { alert("Error en HTML: Faltan IDs."); return; }
+
+            const textoCargo = cargoInput.value.trim();
             const receptorId = receptorSelect.value;
             const receptorName = receptorSelect.options[receptorSelect.selectedIndex]?.text;
-            const canvas = document.getElementById('canvas-create');
 
             if (!textoCargo) { alert("Ingresa el detalle del cargo."); return; }
             if (!receptorId) { alert("Selecciona un receptor."); return; }
@@ -349,7 +359,7 @@
             if (error) throw error;
 
             alert('Cargo creado y firmado exitosamente.');
-            document.getElementById('cargo-text').value = '';
+            cargoInput.value = '';
             clearCanvas('create');
             showView('dashboard');
 
@@ -386,17 +396,14 @@
             const receptorZone = document.getElementById('receptor-sign-zone');
             const btnDelete = document.getElementById('btn-delete-cargo');
             
-            // Lógica de vistas según usuario y estado
             receptorZone.classList.add('hidden');
             btnDelete.classList.add('hidden');
 
             if (cargo.estatus === 'inconcluso') {
                 if (cargo.signed_by_receptor == currentUser.id) {
-                    // Es el receptor y falta firmar
                     receptorZone.classList.remove('hidden');
                     setTimeout(() => initCanvas('receptor'), 100);
                 } else if (cargo.created_by == currentUser.id) {
-                    // Es el creador y el receptor aún no firma -> Puede eliminar
                     btnDelete.classList.remove('hidden');
                 }
             }
@@ -414,7 +421,6 @@
             
             if (isCanvasBlank(canvas)) { alert("Por favor, firma antes de guardar."); return; }
 
-            // Obtener datos del cargo actual para saber la carpeta
             const { data: cargo } = await supabase.from('firmas_cargos').select('carpeta').eq('id', currentCargoId).single();
             
             const path = `${cargo.carpeta}/_firma_receptor_${Date.now()}.png`;
@@ -477,16 +483,18 @@
         }
     }
 
-    // --- REPORTE PDF ---
-    async function generateReport() {
+    // --- VISTA PREVIA Y REPORTE PDF ---
+    async function previewReport() {
         try {
             const supabase = getSupabase(); if (!supabase) return;
             const start = document.getElementById('report-start').value;
             const end = document.getElementById('report-end').value;
             const msg = document.getElementById('report-msg');
+            const previewContainer = document.getElementById('report-preview-container');
+            const pdfContent = document.getElementById('pdf-content');
             
             if (!start || !end) { alert("Selecciona ambas fechas."); return; }
-            msg.textContent = "Generando PDF, por favor espera...";
+            msg.textContent = "Generando vista previa...";
 
             const { data, error } = await supabase.from('firmas_cargos')
                 .select('*')
@@ -496,57 +504,77 @@
                 .order('fecha', { ascending: true });
 
             if (error) throw error;
-            if (!data || data.length === 0) { msg.textContent = "No hay datos en esas fechas."; return; }
+            if (!data || data.length === 0) { 
+                msg.textContent = "No hay datos en esas fechas."; 
+                previewContainer.classList.add('hidden');
+                document.getElementById('btn-download-pdf').classList.add('hidden');
+                return; 
+            }
 
-            const container = document.getElementById('pdf-container');
-            container.innerHTML = `
-                <div class="pdf-page" id="pdf-content">
-                    <h2 style="text-align:center; color:black;">Reporte de Cargos</h2>
-                    <p style="text-align:center; color:#555;">Desde: ${start} Hasta: ${end}</p>
-                    <p style="text-align:center; color:#555;">Usuario: ${currentUser.usuario}</p>
-                    <table class="pdf-table">
-                        <thead>
+            // Construir el HTML de la vista previa con los nombres encima de las firmas
+            pdfContent.innerHTML = `
+                <h2 style="text-align:center; color:black; margin-bottom: 10px;">Reporte de Cargos</h2>
+                <p style="text-align:center; color:#555; margin-bottom: 5px;">Desde: ${start} Hasta: ${end}</p>
+                <p style="text-align:center; color:#555; margin-bottom: 20px;">Usuario: ${currentUser.usuario}</p>
+                <table class="pdf-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Detalle</th>
+                            <th>Estado</th>
+                            <th>Firma Creador</th>
+                            <th>Firma Receptor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.map(c => `
                             <tr>
-                                <th>Fecha</th>
-                                <th>Detalle</th>
-                                <th>Estado</th>
-                                <th>Firma Creador</th>
-                                <th>Firma Receptor</th>
+                                <td>${new Date(c.fecha).toLocaleDateString('es-ES')}</td>
+                                <td>${c.item.substring(0, 40)}...</td>
+                                <td>${c.estatus}</td>
+                                <td style="text-align: center;">
+                                    <div style="font-size: 10px; font-weight: bold; margin-bottom: 2px;">${c.nombre_recepcion}</div>
+                                    <img src="${c.firma_recepcion_url}?t=${Date.now()}" class="pdf-sign-img" crossorigin="anonymous">
+                                </td>
+                                <td style="text-align: center;">
+                                    <div style="font-size: 10px; font-weight: bold; margin-bottom: 2px;">${c.nombre_receptor}</div>
+                                    ${c.firma_receptor_url ? `<img src="${c.firma_receptor_url}?t=${Date.now()}" class="pdf-sign-img" crossorigin="anonymous">` : 'Pendiente'}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            ${data.map(c => `
-                                <tr>
-                                    <td>${new Date(c.fecha).toLocaleDateString('es-ES')}</td>
-                                    <td>${c.item.substring(0, 40)}...</td>
-                                    <td>${c.estatus}</td>
-                                    <td><img src="${c.firma_recepcion_url}?t=${Date.now()}" class="pdf-sign-img" crossorigin="anonymous"></td>
-                                    <td>${c.firma_receptor_url ? `<img src="${c.firma_receptor_url}?t=${Date.now()}" class="pdf-sign-img" crossorigin="anonymous">` : 'Pendiente'}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
+                        `).join('')}
+                    </tbody>
+                </table>
             `;
 
-            // Esperar a que las imágenes carguen
-            setTimeout(() => {
-                const { jsPDF } = window.jspdf;
-                html2canvas(document.getElementById('pdf-content'), { scale: 2, useCORS: true }).then(canvas => {
-                    const pdf = new jsPDF('p', 'mm', 'a4');
-                    const imgData = canvas.toDataURL('image/png');
-                    const pdfWidth = pdf.internal.pageSize.getWidth();
-                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                    pdf.save(`Reporte_Cargos_${start}_al_${end}.pdf`);
-                    msg.textContent = "PDF descargado con éxito.";
-                    container.innerHTML = ''; // Limpiar
-                });
-            }, 1500);
+            msg.textContent = "Vista previa generada. Revisa abajo.";
+            previewContainer.classList.remove('hidden');
+            document.getElementById('btn-download-pdf').classList.remove('hidden');
 
         } catch (err) {
             document.getElementById('report-msg').textContent = 'Error: ' + err.message;
         }
+    }
+
+    function downloadPDF() {
+        const msg = document.getElementById('report-msg');
+        msg.textContent = "Preparando descarga...";
+        
+        setTimeout(() => {
+            const { jsPDF } = window.jspdf;
+            html2canvas(document.getElementById('pdf-content'), { scale: 2, useCORS: true }).then(canvas => {
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgData = canvas.toDataURL('image/png');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                
+                const start = document.getElementById('report-start').value;
+                const end = document.getElementById('report-end').value;
+                pdf.save(`Reporte_Cargos_${start}_al_${end}.pdf`);
+                
+                msg.textContent = "PDF descargado con éxito.";
+            });
+        }, 500); // Pequeña pausa para asegurar que las imágenes estén renderizadas
     }
 
     // --- UTILIDADES CANVAS ---
@@ -606,6 +634,5 @@
         return new Blob([u8arr], {type: mime});
     }
 </script>
-</body>
+</body> 
 </html>
-
