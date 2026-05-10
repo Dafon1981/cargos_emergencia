@@ -16,7 +16,7 @@
         .container { width: 100%; max-width: 900px; margin: 0 auto; padding: 20px; }
         
         h1, h2, h3 { color: #d4af37; margin-bottom: 15px; text-align: center; }
-        .card { background: #1a1a1a; border-radius: 12px; padding: 25px; box-shadow: 0 8px 30px rgba(0,0,0,0.6 ); margin-bottom: 20px; }
+        .card { background: #1a1a1a; border-radius: 12px; padding: 25px; box-shadow: 0 8px 30px rgba(0,0,0,0.6  ); margin-bottom: 20px; }
         
         input, textarea, select { width: 100%; padding: 12px; margin: 10px 0; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: #e0e0e0; font-size: 1rem; }
         
@@ -70,7 +70,6 @@
     <div id="login-section" class="card flex-center">
         <h1>Iniciar Sesión</h1>
         <input type="text" id="usuario" placeholder="Usuario">
-        <!-- CAMBIO: type="text" para quitar asteriscos -->
         <input type="text" id="clave" placeholder="Contraseña">
         <div class="buttons"><button class="btn-blue" onclick="handleLogin()">Entrar</button></div>
         <p id="login-msg" style="color: #ff9800; margin-top: 10px;"></p>
@@ -133,14 +132,14 @@
         <label>Desde:</label> <input type="date" id="report-start">
         <label>Hasta:</label> <input type="date" id="report-end">
         <div class="buttons">
-            <!-- CAMBIO: Botón para Vista Previa y Botón para Descargar -->
             <button class="btn-blue" onclick="previewReport()">Ver Vista Previa</button>
             <button id="btn-download-pdf" class="btn-green hidden" onclick="downloadPDF()">Descargar PDF</button>
+            <!-- CAMBIO: Botón Compartir -->
+            <button id="btn-share-pdf" class="btn-yellow hidden" onclick="sharePDF()">Compartir</button>
             <button class="btn-gray" onclick="showView('dashboard')">Cancelar</button>
         </div>
         <p id="report-msg" style="text-align: center; margin-top: 15px; color: #d4af37;"></p>
 
-        <!-- CAMBIO: Contenedor de Vista Previa -->
         <div id="report-preview-container" class="hidden">
             <div id="pdf-content" class="pdf-page"></div>
         </div>
@@ -155,7 +154,6 @@
         
         <div id="detail-signatures" class="signatures-display"></div>
         
-        <!-- Zona para que firme el receptor si falta -->
         <div id="receptor-sign-zone" class="hidden flex-center" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 20px;">
             <h3 style="color: #d4af37;">Firma del Receptor</h3>
             <canvas id="canvas-receptor"></canvas>
@@ -179,7 +177,7 @@
     let currentUser = null;
     let currentCargoId = null;
 
-    function getSupabase( ) {
+    function getSupabase(  ) {
         if (supabaseClient) return supabaseClient;
         try { 
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
@@ -219,6 +217,7 @@
         } else if (viewId === 'report-view') {
             document.getElementById('report-preview-container').classList.add('hidden');
             document.getElementById('btn-download-pdf').classList.add('hidden');
+            document.getElementById('btn-share-pdf').classList.add('hidden'); // Ocultar botón compartir
             document.getElementById('report-msg').textContent = '';
         }
     }
@@ -508,6 +507,7 @@
                 msg.textContent = "No hay datos en esas fechas."; 
                 previewContainer.classList.add('hidden');
                 document.getElementById('btn-download-pdf').classList.add('hidden');
+                document.getElementById('btn-share-pdf').classList.add('hidden');
                 return; 
             }
 
@@ -549,6 +549,7 @@
             msg.textContent = "Vista previa generada. Revisa abajo.";
             previewContainer.classList.remove('hidden');
             document.getElementById('btn-download-pdf').classList.remove('hidden');
+            document.getElementById('btn-share-pdf').classList.remove('hidden'); // Mostrar botón compartir
 
         } catch (err) {
             document.getElementById('report-msg').textContent = 'Error: ' + err.message;
@@ -574,7 +575,51 @@
                 
                 msg.textContent = "PDF descargado con éxito.";
             });
-        }, 500); // Pequeña pausa para asegurar que las imágenes estén renderizadas
+        }, 500);
+    }
+
+    // --- COMPARTIR PDF (NUEVO) ---
+    function sharePDF() {
+        const msg = document.getElementById('report-msg');
+        msg.textContent = "Preparando archivo para compartir...";
+        
+        setTimeout(() => {
+            const { jsPDF } = window.jspdf;
+            html2canvas(document.getElementById('pdf-content'), { scale: 2, useCORS: true }).then(async canvas => {
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgData = canvas.toDataURL('image/png');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                
+                const start = document.getElementById('report-start').value;
+                const end = document.getElementById('report-end').value;
+                const fileName = `Reporte_Cargos_${start}_al_${end}.pdf`;
+                
+                // Convertir el PDF a un objeto File
+                const pdfBlob = pdf.output('blob');
+                const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+                // Verificar si el navegador soporta compartir archivos
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            title: 'Reporte de Cargos',
+                            text: 'Adjunto el reporte de cargos generado.',
+                            files: [file]
+                        });
+                        msg.textContent = "Reporte compartido con éxito.";
+                    } catch (error) {
+                        console.error('Error al compartir:', error);
+                        msg.textContent = "Se canceló o hubo un error al compartir.";
+                    }
+                } else {
+                    // Fallback si no soporta compartir (ej. PC antigua)
+                    msg.textContent = "Tu navegador no soporta compartir archivos directamente. Descargando...";
+                    pdf.save(fileName);
+                }
+            });
+        }, 500);
     }
 
     // --- UTILIDADES CANVAS ---
