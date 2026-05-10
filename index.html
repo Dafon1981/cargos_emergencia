@@ -3,396 +3,335 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Firmas y Cargos v3.0</title>
+    <title>Gestión de Firmas y Cargos</title>
+    
+    <!-- Bibliotecas solicitadas -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        html { height: 100%; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f0f0f; color: #e0e0e0; min-height: 100%; padding: 20px; }
-        .container { width: 100%; max-width: 960px; margin: 0 auto; padding: 1rem; }
-        h1, h2, h3, h4 { color: #d4af37; margin-bottom: 1rem; }
-        .card { background: #1a1a1a; border-radius: 12px; padding: 2.5rem; box-shadow: 0 8px 30px rgba(0,0,0,0.6 ); margin: 1.5rem 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; font-family: 'Segoe UI', Arial, sans-serif; background: #0f0f0f; color: #e0e0e0; }
+        .container { width: 100%; max-width: 900px; margin: 0 auto; padding: 20px; }
+        
+        h1, h2, h3 { color: #d4af37; margin-bottom: 15px; text-align: center; }
+        .card { background: #1a1a1a; border-radius: 12px; padding: 25px; box-shadow: 0 8px 30px rgba(0,0,0,0.6 ); margin-bottom: 20px; }
+        
         input, textarea, select { width: 100%; padding: 12px; margin: 10px 0; background: #2a2a2a; border: 1px solid #444; border-radius: 6px; color: #e0e0e0; font-size: 1rem; }
         
         /* Botones Personalizados */
-        button { padding: 14px 28px; margin: 8px 4px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; transition: all 0.2s; flex-grow: 1; max-width: 300px; border: none; }
-        button:hover { transform: translateY(-2px); filter: brightness(1.1); }
-        .btn-green { background: #28a745; color: white; }
-        .btn-yellow { background: #ffc107; color: black; }
-        .btn-blue { background: #007bff; color: white; }
-        .btn-danger { background: #dc3545; color: white; }
-        .btn-secondary { background: #6c757d; color: white; }
+        .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
+        button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: transform 0.2s; color: white; flex-grow: 1; max-width: 250px; }
+        button:hover { transform: translateY(-2px); }
         
-        .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; width: 100%; }
+        .btn-green { background: #2e7d32; } /* Nuevo Cargo */
+        .btn-yellow { background: #fbc02d; color: #000; } /* Búsqueda */
+        .btn-blue { background: #1565c0; } /* Reporte */
+        .btn-red { background: #c62828; } /* Cerrar Sesión / Eliminar */
+        .btn-gray { background: #555; } /* Volver / Cancelar */
+
         .hidden { display: none !important; }
         .flex-center { display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        #mensaje { margin-top: 1rem; font-weight: bold; }
-        
-        /* Canvas de Firma */
-        canvas { border: 2px solid #444; background: #f8f8f8; border-radius: 8px; margin: 12px 0; touch-action: none; width: 100%; max-width: 500px; height: 280px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.1); }
         
         /* Lista de Cargos */
         .cargo-list { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
-        .cargo-item { padding: 15px 20px; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; background: #2a2a2a; }
-        .cargo-item:hover { filter: brightness(1.2); }
-        .status-inconcluso { border-left: 6px solid #dc3545; }
-        .status-completado { border-left: 6px solid #28a745; }
-        .cargo-title { font-weight: bold; font-size: 1.1rem; }
-        .cargo-meta { font-size: 0.9rem; color: #aaa; }
-        .cargo-badge { padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
-        .badge-red { background: rgba(220, 53, 69, 0.2); color: #ff6b6b; }
-        .badge-green { background: rgba(40, 167, 69, 0.2); color: #51cf66; }
+        .cargo-item { background: #222; padding: 15px; border-radius: 8px; cursor: pointer; border-left: 5px solid #555; transition: background 0.2s; }
+        .cargo-item:hover { background: #333; }
+        .cargo-item.inconcluso { border-left-color: #c62828; }
+        .cargo-item.completado { border-left-color: #2e7d32; }
+        .cargo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .cargo-date { font-size: 0.85rem; color: #aaa; }
+        .cargo-status { font-weight: bold; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; }
+        .status-red { background: rgba(198, 40, 40, 0.2); color: #ef5350; }
+        .status-green { background: rgba(46, 125, 50, 0.2); color: #66bb6a; }
+        
+        /* Firmas y Canvas */
+        canvas { border: 2px solid #444; background: #f8f8f8; border-radius: 8px; margin: 10px 0; touch-action: none; width: 100%; max-width: 500px; height: 250px; }
+        .signatures-display { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
+        .signature-box { border: 1px solid #444; padding: 15px; border-radius: 8px; text-align: center; width: 250px; background: #222; }
+        .signature-box img { max-width: 100%; max-height: 100px; background: white; padding: 5px; border-radius: 4px; margin-top: 10px; }
+        .signature-box h4 { color: #aaa; font-size: 0.9rem; margin-bottom: 5px; }
+        .signature-box p { color: #d4af37; font-weight: bold; }
 
-        /* Vista de Cargo */
-        .signatures-display { display: flex; justify-content: space-around; align-items: center; text-align: center; margin-top: 2rem; flex-wrap: wrap; gap: 20px; }
-        .signature-box { border: 1px solid #333; padding: 15px; border-radius: 8px; width: 250px; background: #222; }
-        .signature-box h5 { color: #aaa; margin-bottom: 10px; }
-        .signature-box img { max-height: 100px; width: auto; background-color: white; padding: 5px; border-radius: 4px; margin-top: 5px; }
-        .signature-box p { color: #ff6b6b; font-style: italic; font-weight: bold; }
-        .cargo-text-display { background: #222; padding: 20px; border-radius: 8px; border: 1px solid #444; white-space: pre-wrap; margin-bottom: 20px; font-size: 1.1rem; line-height: 1.6; }
-
-        /* Filtros */
-        .filter-controls { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 20px; background: #222; padding: 15px; border-radius: 8px; }
-        .filter-controls > div { flex-grow: 1; min-width: 200px; }
-        .filter-controls label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #aaa; }
+        /* Reporte PDF */
+        #pdf-container { position: absolute; left: -9999px; top: -9999px; }
+        .pdf-page { background: white; color: black; width: 210mm; min-height: 297mm; padding: 20mm; font-family: Arial, sans-serif; }
+        .pdf-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 8px; text-align: left; }
+        .pdf-table th { background: #f0f0f0; }
+        .pdf-sign-img { max-height: 40px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- Login Section -->
+    <!-- LOGIN -->
     <div id="login-section" class="card flex-center">
         <h1>Iniciar Sesión</h1>
-        <form id="login-form" style="width:100%; max-width:420px;">
-            <label>Usuario</label>
-            <input type="text" id="usuario" required placeholder="Ej: Manuel">
-            <label>Contraseña</label>
-            <input type="password" id="clave" required>
-            <div class="buttons"><button type="button" class="btn-blue" onclick="handleLogin()">Entrar</button></div>
-            <div id="mensaje" style="color: #ff9800; text-align: center;"></div>
-        </form>
+        <input type="text" id="usuario" placeholder="Usuario">
+        <input type="password" id="clave" placeholder="Contraseña">
+        <div class="buttons"><button class="btn-blue" onclick="handleLogin()">Entrar</button></div>
+        <p id="login-msg" style="color: #ff9800; margin-top: 10px;"></p>
     </div>
 
-    <!-- Dashboard Section -->
+    <!-- DASHBOARD PRINCIPAL -->
     <div id="dashboard" class="hidden">
-        <div class="card flex-center">
-            <h1>Bienvenido, <span id="username" style="color:#d4af37;"></span></h1>
+        <div class="card">
+            <h2>Hola, <span id="username" style="color:#d4af37;"></span></h2>
             <div class="buttons">
-                <button class="btn-green" onclick="showCreateCargo()">Nuevo Cargo</button>
-                <button class="btn-yellow" onclick="showSearch()">Búsqueda</button>
-                <button class="btn-blue" onclick="showReport()">Reporte</button>
-                <button class="btn-danger" onclick="handleLogout()">Cerrar Sesión</button>
+                <button class="btn-green" onclick="showView('create-view')">Nuevo Cargo</button>
+                <button class="btn-yellow" onclick="showView('search-view')">Búsqueda</button>
+                <button class="btn-blue" onclick="showView('report-view')">Reporte</button>
+                <button class="btn-red" onclick="handleLogout()">Cerrar Sesión</button>
             </div>
+        </div>
+        <div class="card">
+            <h3>Mis Cargos Recientes</h3>
+            <div id="main-cargo-list" class="cargo-list">Cargando...</div>
+        </div>
+    </div>
+
+    <!-- VISTA: NUEVO CARGO -->
+    <div id="create-view" class="hidden card">
+        <h2>Redactar Nuevo Cargo</h2>
+        <label>Detalle del Cargo:</label>
+        <textarea id="cargo-text" rows="6" placeholder="Escribe el detalle del cargo aquí..."></textarea>
+        
+        <label>Seleccionar Receptor (Quien debe firmar):</label>
+        <select id="receptor-select">
+            <option value="">-- Seleccione un usuario --</option>
+        </select>
+
+        <div class="flex-center" style="margin-top: 20px;">
+            <h3 style="color: #d4af37;">Tu Firma (Creador)</h3>
+            <canvas id="canvas-create"></canvas>
+            <div class="buttons">
+                <button class="btn-gray" onclick="clearCanvas('create')">Limpiar Firma</button>
+                <button class="btn-green" onclick="saveNewCargo()">Siguiente (Firmar y Guardar)</button>
+                <button class="btn-red" onclick="showView('dashboard')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA: BÚSQUEDA -->
+    <div id="search-view" class="hidden card">
+        <h2>Búsqueda Personalizada</h2>
+        <label>Desde:</label> <input type="date" id="search-start">
+        <label>Hasta:</label> <input type="date" id="search-end">
+        <div class="buttons">
+            <button class="btn-yellow" onclick="performSearch()">Buscar</button>
+            <button class="btn-gray" onclick="showView('dashboard')">Volver</button>
+        </div>
+        <div id="search-results" class="cargo-list" style="margin-top: 20px;"></div>
+    </div>
+
+    <!-- VISTA: REPORTE -->
+    <div id="report-view" class="hidden card">
+        <h2>Generar Reporte PDF</h2>
+        <label>Desde:</label> <input type="date" id="report-start">
+        <label>Hasta:</label> <input type="date" id="report-end">
+        <div class="buttons">
+            <button class="btn-blue" onclick="generateReport()">Generar PDF</button>
+            <button class="btn-gray" onclick="showView('dashboard')">Cancelar</button>
+        </div>
+        <p id="report-msg" style="text-align: center; margin-top: 15px; color: #d4af37;"></p>
+    </div>
+
+    <!-- VISTA: DETALLE DEL CARGO (Para ver y firmar) -->
+    <div id="detail-view" class="hidden card">
+        <h2>Detalle del Cargo</h2>
+        <div style="background: #222; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <p id="detail-text" style="white-space: pre-wrap;"></p>
         </div>
         
-        <!-- Lista Principal de Cargos -->
-        <div id="main-cargo-list" class="card">
-            <h2>Mis Cargos Recientes</h2>
-            <div id="dashboard-results" class="cargo-list">Cargando...</div>
+        <div id="detail-signatures" class="signatures-display"></div>
+        
+        <!-- Zona para que firme el receptor si falta -->
+        <div id="receptor-sign-zone" class="hidden flex-center" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 20px;">
+            <h3 style="color: #d4af37;">Firma del Receptor</h3>
+            <canvas id="canvas-receptor"></canvas>
+            <div class="buttons">
+                <button class="btn-gray" onclick="clearCanvas('receptor')">Limpiar Firma</button>
+                <button class="btn-green" onclick="saveReceptorSignature()">Firmar Cargo</button>
+            </div>
+        </div>
+
+        <div class="buttons" style="margin-top: 20px;">
+            <button class="btn-gray" onclick="showView('dashboard')">Volver</button>
+            <button id="btn-delete-cargo" class="btn-red hidden" onclick="deleteCargo()">Eliminar Cargo</button>
         </div>
     </div>
 
-    <!-- Sección: Crear Nuevo Cargo -->
-    <div id="create-cargo-section" class="hidden">
-        <div class="card">
-            <h2>Redactar Nuevo Cargo</h2>
-            <label>Detalle del Cargo:</label>
-            <textarea id="nuevo-cargo-texto" rows="8" placeholder="Escriba aquí el contenido del cargo..."></textarea>
-            
-            <label>Seleccionar Receptor (Quien debe firmar):</label>
-            <select id="nuevo-cargo-receptor">
-                <option value="">Cargando usuarios...</option>
-            </select>
-
-            <div id="create-signature-area" class="hidden flex-center" style="margin-top: 20px; border-top: 1px solid #444; padding-top: 20px;">
-                <h3>Tu Firma (Creador)</h3>
-                <canvas id="canvas-creador"></canvas>
-                <div class="buttons">
-                    <button class="btn-secondary" onclick="clearCanvas('creador')">Limpiar Firma</button>
-                    <button class="btn-green" onclick="saveNewCargo()">Firmar y Enviar</button>
-                </div>
-            </div>
-
-            <div class="buttons" id="btn-siguiente-area" style="margin-top: 20px;">
-                <button class="btn-blue" onclick="proceedToSign()">Siguiente</button>
-                <button class="btn-secondary" onclick="backToDashboard()">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sección: Ver/Firmar Cargo -->
-    <div id="view-cargo-section" class="hidden">
-        <div class="card">
-            <h2 id="view-cargo-title">Detalle del Cargo</h2>
-            <div class="cargo-text-display" id="view-cargo-texto"></div>
-            
-            <div class="signatures-display" id="view-signatures">
-                <!-- Se llena por JS -->
-            </div>
-
-            <div id="receptor-signature-area" class="hidden flex-center" style="margin-top: 2rem; border-top: 1px solid #444; padding-top: 2rem;">
-                <h3>Firma del Receptor</h3>
-                <canvas id="canvas-receptor"></canvas>
-                <div class="buttons">
-                    <button class="btn-secondary" onclick="clearCanvas('receptor')">Limpiar Firma</button>
-                    <button class="btn-green" onclick="signAsReceptor()">Firmar Cargo</button>
-                </div>
-            </div>
-
-            <div class="buttons" style="margin-top: 2rem;">
-                <button class="btn-danger hidden" id="btn-eliminar-cargo" onclick="deleteCargo()">Eliminar Cargo</button>
-                <button class="btn-secondary" onclick="backToDashboard()">Volver</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sección: Búsqueda / Reporte -->
-    <div id="search-report-section" class="hidden">
-        <div class="card">
-            <h2 id="sr-title">Búsqueda de Cargos</h2>
-            <div class="filter-controls">
-                <div>
-                    <label>Desde</label>
-                    <input type="date" id="sr-desde">
-                </div>
-                <div>
-                    <label>Hasta</label>
-                    <input type="date" id="sr-hasta">
-                </div>
-                <div class="flex-center" style="flex-direction: row; gap: 10px;">
-                    <button class="btn-yellow" onclick="executeSearch()">Buscar</button>
-                    <button class="btn-blue hidden" id="btn-exportar-pdf" onclick="exportToPDF()">Exportar PDF</button>
-                </div>
-            </div>
-            <div id="sr-results" class="cargo-list"></div>
-        </div>
-        <div class="buttons"><button class="btn-secondary" onclick="backToDashboard()">Volver al Inicio</button></div>
-    </div>
-
+    <!-- Contenedor oculto para armar el PDF -->
+    <div id="pdf-container"></div>
 </div>
-
 <script>
     const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
     
     let supabaseClient = null;
     let currentUser = null;
-    let currentCargoId = null; 
-    let currentMode = 'dashboard'; 
+    let currentCargoId = null; // Para saber qué cargo estamos viendo/editando
 
     function getSupabase( ) {
         if (supabaseClient) return supabaseClient;
-        try { supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); return supabaseClient; } 
-        catch (err) { console.error("Error inicializando Supabase:", err); return null; }
+        try { 
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
+            return supabaseClient; 
+        } catch (err) { 
+            alert("Error inicializando Supabase: " + err.message); 
+            return null; 
+        }
     }
 
     window.onload = () => {
         const stored = localStorage.getItem('currentUser');
         if (stored) {
-            try { currentUser = JSON.parse(stored); showDashboard(); } 
-            catch (e) { localStorage.removeItem('currentUser'); showLogin(); }
-        } else { showLogin(); }
+            try { 
+                currentUser = JSON.parse(stored); 
+                showView('dashboard'); 
+            } catch (e) { 
+                localStorage.removeItem('currentUser'); 
+                showView('login-section'); 
+            }
+        } else { 
+            showView('login-section'); 
+        }
     };
 
-    // --- NAVEGACIÓN Y LOGIN ---
-    function showLogin() {
-        document.getElementById('login-section').classList.remove('hidden');
-        document.getElementById('dashboard').classList.add('hidden');
-        document.getElementById('create-cargo-section').classList.add('hidden');
-        document.getElementById('view-cargo-section').classList.add('hidden');
-        document.getElementById('search-report-section').classList.add('hidden');
+    function showView(viewId) {
+        const views = ['login-section', 'dashboard', 'create-view', 'search-view', 'report-view', 'detail-view'];
+        views.forEach(id => document.getElementById(id).classList.add('hidden'));
+        document.getElementById(viewId).classList.remove('hidden');
+
+        if (viewId === 'dashboard') {
+            document.getElementById('username').textContent = currentUser.usuario;
+            loadMainCargoList();
+        } else if (viewId === 'create-view') {
+            loadReceptors();
+            setTimeout(() => initCanvas('create'), 100);
+        }
     }
 
     async function handleLogin() {
         const supabase = getSupabase(); if (!supabase) return;
         const usuario = document.getElementById('usuario').value.trim();
         const clave = document.getElementById('clave').value;
-        const mensaje = document.getElementById('mensaje');
-        mensaje.textContent = 'Verificando...';
+        const msg = document.getElementById('login-msg');
         
-        if (!usuario || !clave) { mensaje.textContent = 'Ingresa usuario y contraseña'; return; }
+        if (!usuario || !clave) { msg.textContent = 'Ingresa usuario y contraseña'; return; }
+        msg.textContent = 'Verificando...';
         
         try {
             const { data, error } = await supabase.from('usuarios').select('id, usuario').eq('usuario', usuario).eq('clave', clave).single();
-            if (error || !data) { mensaje.textContent = 'Usuario o contraseña incorrectos.'; return; }
+            if (error || !data) { msg.textContent = 'Usuario o contraseña incorrectos.'; return; }
+            
             currentUser = data;
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            mensaje.textContent = '¡Login exitoso!';
-            setTimeout(showDashboard, 800);
-        } catch (err) { mensaje.textContent = 'Error inesperado.'; }
+            msg.textContent = '';
+            showView('dashboard');
+        } catch (err) { 
+            msg.textContent = 'Error: ' + err.message; 
+        }
     }
 
     function handleLogout() {
         currentUser = null;
         localStorage.removeItem('currentUser');
-        showLogin();
+        document.getElementById('usuario').value = '';
+        document.getElementById('clave').value = '';
+        showView('login-section');
     }
 
-    function backToDashboard() {
-        showDashboard();
-    }
-
-    function showDashboard() {
-        currentMode = 'dashboard';
-        document.getElementById('login-section').classList.add('hidden');
-        document.getElementById('create-cargo-section').classList.add('hidden');
-        document.getElementById('view-cargo-section').classList.add('hidden');
-        document.getElementById('search-report-section').classList.add('hidden');
-        
-        document.getElementById('dashboard').classList.remove('hidden');
-        document.getElementById('username').textContent = currentUser.usuario || 'Usuario';
-        
-        loadRecentCargos();
-    }
-
-    // --- CARGAR LISTA DE CARGOS (DASHBOARD) ---
-    async function loadRecentCargos() {
+    // --- CARGAR LISTA PRINCIPAL ---
+    async function loadMainCargoList() {
         const supabase = getSupabase(); if (!supabase) return;
-        const resultsContainer = document.getElementById('dashboard-results');
-        resultsContainer.innerHTML = '<p>Cargando...</p>';
+        const listDiv = document.getElementById('main-cargo-list');
+        listDiv.innerHTML = 'Cargando...';
 
-        // Buscar cargos donde el usuario es creador O receptor (usando signed_by_receptor)
-        const { data, error } = await supabase
-            .from('firmas_cargos')
-            .select('*')
-            .or(`created_by.eq.${currentUser.id},signed_by_receptor.eq.${currentUser.id}`)
-            .order('fecha', { ascending: false })
-            .limit(20);
-
-        if (error) { resultsContainer.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`; return; }
-        if (!data || data.length === 0) { resultsContainer.innerHTML = '<p>No tienes cargos recientes.</p>'; return; }
-
-        renderCargoList(data, resultsContainer);
-    }
-
-    function renderCargoList(cargos, container) {
-        container.innerHTML = '';
-        cargos.forEach(cargo => {
-            const isCompletado = cargo.estatus === 'completado';
-            const statusClass = isCompletado ? 'status-completado' : 'status-inconcluso';
-            const badgeClass = isCompletado ? 'badge-green' : 'badge-red';
-            const statusText = isCompletado ? 'Completado' : 'Inconcluso';
-            
-            let titulo = cargo.observacion ? cargo.observacion.substring(0, 50) : 'Cargo sin texto';
-            if (cargo.observacion && cargo.observacion.length > 50) titulo += '...';
-
-            const fecha = new Date(cargo.fecha).toLocaleDateString('es-ES');
-            
-            let rolText = '';
-            if (cargo.created_by === currentUser.id) rolText = `Enviado a: ${cargo.nombre_receptor}`;
-            else rolText = `Recibido de: ${cargo.responsable}`;
-
-            const div = document.createElement('div');
-            div.className = `cargo-item ${statusClass}`;
-            div.onclick = () => openCargoView(cargo);
-            div.innerHTML = `
-                <div>
-                    <div class="cargo-title">${titulo}</div>
-                    <div class="cargo-meta">${fecha} | ${rolText}</div>
-                </div>
-                <div class="cargo-badge ${badgeClass}">${statusText}</div>
-            `;
-            container.appendChild(div);
-        });
-    }
-
-    // --- CREAR NUEVO CARGO ---
-    async function showCreateCargo() {
-        document.getElementById('dashboard').classList.add('hidden');
-        document.getElementById('create-cargo-section').classList.remove('hidden');
-        
-        document.getElementById('nuevo-cargo-texto').value = '';
-        document.getElementById('btn-siguiente-area').classList.remove('hidden');
-        document.getElementById('create-signature-area').classList.add('hidden');
-        
-        await loadUsersForSelect();
-    }
-
-    async function loadUsersForSelect() {
-        const supabase = getSupabase(); if (!supabase) return;
-        const select = document.getElementById('nuevo-cargo-receptor');
-        select.innerHTML = '<option value="">Cargando...</option>';
-        
-        const { data, error } = await supabase.from('usuarios').select('id, usuario').neq('id', currentUser.id).order('usuario');
-        
-        if (error) { select.innerHTML = '<option value="">Error al cargar</option>'; return; }
-        
-        select.innerHTML = '<option value="">-- Seleccione un receptor --</option>';
-        data.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u.id;
-            opt.textContent = u.usuario;
-            select.appendChild(opt);
-        });
-    }
-
-    function proceedToSign() {
-        const texto = document.getElementById('nuevo-cargo-texto').value.trim();
-        const receptorId = document.getElementById('nuevo-cargo-receptor').value;
-        
-        if (!texto) { alert("Debe escribir el detalle del cargo."); return; }
-        if (!receptorId) { alert("Debe seleccionar un receptor."); return; }
-        
-        document.getElementById('btn-siguiente-area').classList.add('hidden');
-        document.getElementById('create-signature-area').classList.remove('hidden');
-        setTimeout(() => initCanvas('creador'), 150);
-    }
-
-    
-        async function saveNewCargo() {
         try {
-            const supabase = getSupabase(); 
-            if (!supabase) {
-                alert("Error de conexión con la base de datos.");
-                return;
-            }
+            // Cargar cargos donde el usuario es creador O receptor
+            const { data, error } = await supabase.from('firmas_cargos')
+                .select('*')
+                .or(`created_by.eq.${currentUser.id},signed_by_receptor.eq.${currentUser.id}`)
+                .order('fecha', { ascending: false })
+                .limit(20);
 
+            if (error) throw error;
+            renderCargoList(data, listDiv);
+        } catch (err) {
+            listDiv.innerHTML = 'Error al cargar: ' + err.message;
+        }
+    }
+
+    function renderCargoList(data, container) {
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p>No hay cargos para mostrar.</p>';
+            return;
+        }
+
+        container.innerHTML = data.map(cargo => {
+            const date = new Date(cargo.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit' });
+            const isCompleted = cargo.estatus === 'completado';
+            const statusClass = isCompleted ? 'status-green' : 'status-red';
+            const statusText = isCompleted ? 'Cargo Completado' : 'Cargo Inconcluso';
+            const itemClass = isCompleted ? 'completado' : 'inconcluso';
+            
+            // Mostrar un extracto del texto
+            const extract = cargo.item.length > 50 ? cargo.item.substring(0, 50) + '...' : cargo.item;
+
+            return `
+                <div class="cargo-item ${itemClass}" onclick="openCargoDetail(${cargo.id})">
+                    <div class="cargo-header">
+                        <span class="cargo-date">${date}</span>
+                        <span class="cargo-status ${statusClass}">${statusText}</span>
+                    </div>
+                    <p><strong>De:</strong> ${cargo.nombre_recepcion} <strong>Para:</strong> ${cargo.nombre_receptor}</p>
+                    <p style="color: #aaa; margin-top: 5px;">${extract}</p>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // --- NUEVO CARGO ---
+    async function loadReceptors() {
+        const supabase = getSupabase(); if (!supabase) return;
+        const select = document.getElementById('receptor-select');
+        
+        try {
+            const { data, error } = await supabase.from('usuarios').select('id, usuario').neq('id', currentUser.id).order('usuario');
+            if (error) throw error;
+            
+            select.innerHTML = '<option value="">-- Seleccione un usuario --</option>' + 
+                data.map(u => `<option value="${u.id}">${u.usuario}</option>`).join('');
+        } catch (err) {
+            alert("Error cargando usuarios: " + err.message);
+        }
+    }
+
+    async function saveNewCargo() {
+        try {
+            const supabase = getSupabase(); if (!supabase) return;
             const textoCargo = document.getElementById('cargo-text').value.trim();
             const receptorSelect = document.getElementById('receptor-select');
             const receptorId = receptorSelect.value;
             const receptorName = receptorSelect.options[receptorSelect.selectedIndex]?.text;
             const canvas = document.getElementById('canvas-create');
 
-            if (!textoCargo) { 
-                alert("Por favor, ingresa el texto del cargo."); 
-                return; 
-            }
-            if (!receptorId) { 
-                alert("Por favor, selecciona un receptor."); 
-                return; 
-            }
+            if (!textoCargo) { alert("Ingresa el detalle del cargo."); return; }
+            if (!receptorId) { alert("Selecciona un receptor."); return; }
+            if (isCanvasBlank(canvas)) { alert("Por favor, firma el cargo."); return; }
 
-            // Verificar si el canvas está vacío (si no ha firmado)
-            const blank = document.createElement('canvas');
-            blank.width = canvas.width; 
-            blank.height = canvas.height;
-            if (canvas.toDataURL() === blank.toDataURL()) { 
-                alert("Por favor, firma el cargo antes de enviar."); 
-                return; 
-            }
-
-            // 1. Generar un nombre de carpeta único automáticamente
             const carpetaGenerada = `CARGO-${Date.now()}`;
-
-            // 2. Convertir la firma a formato Blob para subirla
-            const dataURL = canvas.toDataURL('image/png');
-            const blob = dataURLtoBlob(dataURL);
             const path = `${carpetaGenerada}/_firma_creador_${Date.now()}.png`;
+            const blob = dataURLtoBlob(canvas.toDataURL('image/png'));
 
-            // 3. Subir la firma al Storage de Supabase
             const { error: uploadErr } = await supabase.storage.from('firma_cargos').upload(path, blob, { contentType: 'image/png' });
-            if (uploadErr) { 
-                alert('Error al subir la firma al Storage: ' + uploadErr.message); 
-                return; 
-            }
+            if (uploadErr) throw uploadErr;
 
-            // 4. Obtener la URL pública de la firma subida
             const { data: urlData } = supabase.storage.from('firma_cargos').getPublicUrl(path);
-            const publicUrl = urlData.publicUrl;
 
-            // 5. Guardar todos los datos en la tabla firmas_cargos
             const { error } = await supabase.from('firmas_cargos').insert([{
                 carpeta: carpetaGenerada,
                 item: textoCargo,
@@ -401,273 +340,272 @@
                 responsable: currentUser.usuario,
                 nombre_recepcion: currentUser.usuario,
                 signed_by_recepcion: currentUser.id,
-                firma_recepcion_url: publicUrl,
+                firma_recepcion_url: urlData.publicUrl,
                 nombre_receptor: receptorName,
-                signed_by_receptor: receptorId, // <-- VITAL para que el receptor lo vea
+                signed_by_receptor: receptorId,
                 estatus: 'inconcluso'
             }]);
 
-            if (error) {
-                alert('Error al guardar el cargo en la base de datos: ' + error.message);
-            } else {
-                alert('Cargo creado y firmado exitosamente.');
-                document.getElementById('cargo-text').value = ''; // Limpiar texto
-                clearCanvas('create'); // Limpiar firma
-                backToDashboard(); // Volver al menú principal
-            }
+            if (error) throw error;
+
+            alert('Cargo creado y firmado exitosamente.');
+            document.getElementById('cargo-text').value = '';
+            clearCanvas('create');
+            showView('dashboard');
 
         } catch (err) {
-            // Si hay CUALQUIER error oculto, esto lo mostrará en pantalla
-            alert("Error inesperado en el código: " + err.message);
-            console.error(err);
+            alert("Error al guardar: " + err.message);
         }
     }
 
+    // --- DETALLE Y FIRMA DE RECEPTOR ---
+    async function openCargoDetail(id) {
+        try {
+            const supabase = getSupabase(); if (!supabase) return;
+            currentCargoId = id;
+            
+            const { data: cargo, error } = await supabase.from('firmas_cargos').select('*').eq('id', id).single();
+            if (error) throw error;
 
+            document.getElementById('detail-text').textContent = cargo.item;
+            
+            const sigDiv = document.getElementById('detail-signatures');
+            sigDiv.innerHTML = `
+                <div class="signature-box">
+                    <h4>Creador (Recepción)</h4>
+                    <p>${cargo.nombre_recepcion}</p>
+                    <img src="${cargo.firma_recepcion_url}?t=${Date.now()}" crossorigin="anonymous">
+                </div>
+                <div class="signature-box">
+                    <h4>Receptor</h4>
+                    <p>${cargo.nombre_receptor}</p>
+                    ${cargo.firma_receptor_url ? `<img src="${cargo.firma_receptor_url}?t=${Date.now()}" crossorigin="anonymous">` : '<span style="color:#ef5350; display:block; margin-top:10px;">Falta Firma</span>'}
+                </div>
+            `;
 
-    
-    // --- VER Y FIRMAR CARGO EXISTENTE ---
-    async function openCargoView(cargo) {
-        currentCargoId = cargo.id;
-        document.getElementById('dashboard').classList.add('hidden');
-        document.getElementById('search-report-section').classList.add('hidden');
-        document.getElementById('view-cargo-section').classList.remove('hidden');
-        
-        document.getElementById('view-cargo-texto').textContent = cargo.observacion || 'Sin contenido';
-        
-        const sigContainer = document.getElementById('view-signatures');
-        sigContainer.innerHTML = `
-            <div class="signature-box">
-                <h5>Creado por:</h5>
-                <div style="color:#d4af37; font-weight:bold;">${cargo.responsable}</div>
-                ${cargo.firma_recepcion_url ? `<img src="${cargo.firma_recepcion_url}?t=${new Date().getTime()}" crossorigin="anonymous">` : '<p>Sin firma</p>'}
-            </div>
-            <div class="signature-box">
-                <h5>Receptor:</h5>
-                <div style="color:#d4af37; font-weight:bold;">${cargo.nombre_receptor || 'Desconocido'}</div>
-                ${cargo.firma_receptor_url ? `<img src="${cargo.firma_receptor_url}?t=${new Date().getTime()}" crossorigin="anonymous">` : '<p>Falta Firma</p>'}
-            </div>
-        `;
+            const receptorZone = document.getElementById('receptor-sign-zone');
+            const btnDelete = document.getElementById('btn-delete-cargo');
+            
+            // Lógica de vistas según usuario y estado
+            receptorZone.classList.add('hidden');
+            btnDelete.classList.add('hidden');
 
-        const receptorArea = document.getElementById('receptor-signature-area');
-        const btnEliminar = document.getElementById('btn-eliminar-cargo');
-        
-        receptorArea.classList.add('hidden');
-        btnEliminar.classList.add('hidden');
+            if (cargo.estatus === 'inconcluso') {
+                if (cargo.signed_by_receptor == currentUser.id) {
+                    // Es el receptor y falta firmar
+                    receptorZone.classList.remove('hidden');
+                    setTimeout(() => initCanvas('receptor'), 100);
+                } else if (cargo.created_by == currentUser.id) {
+                    // Es el creador y el receptor aún no firma -> Puede eliminar
+                    btnDelete.classList.remove('hidden');
+                }
+            }
 
-        const isCreator = cargo.created_by === currentUser.id;
-        const isReceptor = cargo.signed_by_receptor == currentUser.id; // <-- CORREGIDO AQUÍ
-        const isCompleted = cargo.estatus === 'completado';
-
-        if (isCreator && !isCompleted) {
-            btnEliminar.classList.remove('hidden');
-        }
-
-        if (isReceptor && !isCompleted) {
-            receptorArea.classList.remove('hidden');
-            setTimeout(() => initCanvas('receptor'), 150);
+            showView('detail-view');
+        } catch (err) {
+            alert("Error al abrir detalle: " + err.message);
         }
     }
 
-    async function signAsReceptor() {
-        const supabase = getSupabase(); if (!supabase) return;
-        const canvas = document.getElementById('canvas-receptor');
-        
-        const dataURL = canvas.toDataURL('image/png'); 
-        const blob = dataURLtoBlob(dataURL);
-        const fileName = `cargo_${currentCargoId}_receptor_${Date.now()}.png`;
-        
-        const { error: uploadErr } = await supabase.storage.from('firma_cargos').upload(fileName, blob, { contentType: 'image/png' });
-        if (uploadErr) { alert('Error al subir firma: ' + uploadErr.message); return; }
-        
-        const { data: urlData } = supabase.storage.from('firma_cargos').getPublicUrl(fileName);
-        const firmaReceptorUrl = urlData.publicUrl;
+    async function saveReceptorSignature() {
+        try {
+            const supabase = getSupabase(); if (!supabase) return;
+            const canvas = document.getElementById('canvas-receptor');
+            
+            if (isCanvasBlank(canvas)) { alert("Por favor, firma antes de guardar."); return; }
 
-        const { error } = await supabase.from('firmas_cargos').update({
-            firma_receptor_url: firmaReceptorUrl,
-            estatus: 'completado'
-        }).eq('id', currentCargoId);
+            // Obtener datos del cargo actual para saber la carpeta
+            const { data: cargo } = await supabase.from('firmas_cargos').select('carpeta').eq('id', currentCargoId).single();
+            
+            const path = `${cargo.carpeta}/_firma_receptor_${Date.now()}.png`;
+            const blob = dataURLtoBlob(canvas.toDataURL('image/png'));
 
-        if (error) { alert('Error al guardar firma: ' + error.message); return; }
-        
-        alert('Cargo firmado exitosamente.');
-        backToDashboard();
+            const { error: uploadErr } = await supabase.storage.from('firma_cargos').upload(path, blob, { contentType: 'image/png' });
+            if (uploadErr) throw uploadErr;
+
+            const { data: urlData } = supabase.storage.from('firma_cargos').getPublicUrl(path);
+
+            const { error } = await supabase.from('firmas_cargos').update({
+                firma_receptor_url: urlData.publicUrl,
+                estatus: 'completado'
+            }).eq('id', currentCargoId);
+
+            if (error) throw error;
+
+            alert('Firma guardada. Cargo completado.');
+            showView('dashboard');
+
+        } catch (err) {
+            alert("Error al firmar: " + err.message);
+        }
     }
 
     async function deleteCargo() {
-        if (!confirm("¿Estás seguro de que deseas eliminar este cargo? Esta acción no se puede deshacer.")) return;
-        
-        const supabase = getSupabase(); if (!supabase) return;
-        const { error } = await supabase.from('firmas_cargos').delete().eq('id', currentCargoId);
-        
-        if (error) { alert('Error al eliminar: ' + error.message); return; }
-        
-        alert('Cargo eliminado.');
-        backToDashboard();
-    }
-
-    // --- BÚSQUEDA Y REPORTE ---
-    function showSearch() {
-        currentMode = 'search';
-        document.getElementById('dashboard').classList.add('hidden');
-        document.getElementById('search-report-section').classList.remove('hidden');
-        document.getElementById('sr-title').textContent = 'Búsqueda de Cargos';
-        document.getElementById('btn-buscar').classList.remove('hidden');
-        document.getElementById('btn-exportar-pdf').classList.add('hidden');
-        document.getElementById('sr-results').innerHTML = '';
-    }
-
-    function showReport() {
-        currentMode = 'report';
-        document.getElementById('dashboard').classList.add('hidden');
-        document.getElementById('search-report-section').classList.remove('hidden');
-        document.getElementById('sr-title').textContent = 'Reporte de Cargos';
-        document.getElementById('btn-buscar').classList.remove('hidden');
-        document.getElementById('btn-exportar-pdf').classList.remove('hidden');
-        document.getElementById('sr-results').innerHTML = '';
-    }
-
-    async function executeSearch() {
-        const supabase = getSupabase(); if (!supabase) return;
-        const resultsContainer = document.getElementById('sr-results');
-        resultsContainer.innerHTML = '<p>Buscando...</p>';
-
-        const fechaInicioStr = document.getElementById('sr-desde').value;
-        const fechaFinStr = document.getElementById('sr-hasta').value;
-
-        let query = supabase.from('firmas_cargos').select('*').order('fecha', { ascending: false });
-
-        if (fechaInicioStr) {
-            const start = new Date(fechaInicioStr); start.setUTCHours(0,0,0,0);
-            query = query.gte('fecha', start.toISOString());
+        if (!confirm("¿Estás seguro de eliminar este cargo? Esta acción no se puede deshacer.")) return;
+        try {
+            const supabase = getSupabase(); if (!supabase) return;
+            const { error } = await supabase.from('firmas_cargos').delete().eq('id', currentCargoId);
+            if (error) throw error;
+            alert("Cargo eliminado.");
+            showView('dashboard');
+        } catch (err) {
+            alert("Error al eliminar: " + err.message);
         }
-        if (fechaFinStr) {
-            const end = new Date(fechaFinStr); end.setUTCHours(23,59,59,999);
-            query = query.lte('fecha', end.toISOString());
-        }
-
-        const { data, error } = await query;
-
-        if (error) { resultsContainer.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`; return; }
-        if (!data || data.length === 0) { resultsContainer.innerHTML = '<p>No se encontraron cargos en este rango de fechas.</p>'; return; }
-
-        renderCargoList(data, resultsContainer);
     }
 
-    // --- EXPORTAR A PDF ---
-    async function exportToPDF() {
-        const resultsContainer = document.getElementById('sr-results');
-        if (resultsContainer.children.length === 0 || resultsContainer.innerHTML.includes('No se encontraron')) {
-            alert("Primero debe realizar una búsqueda con resultados para exportar.");
-            return;
+    // --- BÚSQUEDA ---
+    async function performSearch() {
+        try {
+            const supabase = getSupabase(); if (!supabase) return;
+            const start = document.getElementById('search-start').value;
+            const end = document.getElementById('search-end').value;
+            const resDiv = document.getElementById('search-results');
+            
+            resDiv.innerHTML = 'Buscando...';
+
+            let query = supabase.from('firmas_cargos').select('*').or(`created_by.eq.${currentUser.id},signed_by_receptor.eq.${currentUser.id}`).order('fecha', { ascending: false });
+            
+            if (start) query = query.gte('fecha', start + 'T00:00:00');
+            if (end) query = query.lte('fecha', end + 'T23:59:59');
+
+            const { data, error } = await query;
+            if (error) throw error;
+
+            renderCargoList(data, resDiv);
+        } catch (err) {
+            document.getElementById('search-results').innerHTML = 'Error: ' + err.message;
         }
+    }
 
-        const supabase = getSupabase(); if (!supabase) return;
-        const fechaInicioStr = document.getElementById('sr-desde').value;
-        const fechaFinStr = document.getElementById('sr-hasta').value;
+    // --- REPORTE PDF ---
+    async function generateReport() {
+        try {
+            const supabase = getSupabase(); if (!supabase) return;
+            const start = document.getElementById('report-start').value;
+            const end = document.getElementById('report-end').value;
+            const msg = document.getElementById('report-msg');
+            
+            if (!start || !end) { alert("Selecciona ambas fechas."); return; }
+            msg.textContent = "Generando PDF, por favor espera...";
 
-        let query = supabase.from('firmas_cargos').select('*').order('fecha', { ascending: false });
-        if (fechaInicioStr) query = query.gte('fecha', new Date(fechaInicioStr).toISOString());
-        if (fechaFinStr) query = query.lte('fecha', new Date(fechaFinStr).toISOString());
+            const { data, error } = await supabase.from('firmas_cargos')
+                .select('*')
+                .or(`created_by.eq.${currentUser.id},signed_by_receptor.eq.${currentUser.id}`)
+                .gte('fecha', start + 'T00:00:00')
+                .lte('fecha', end + 'T23:59:59')
+                .order('fecha', { ascending: true });
 
-        const { data, error } = await query;
-        if (error || !data || data.length === 0) return;
+            if (error) throw error;
+            if (!data || data.length === 0) { msg.textContent = "No hay datos en esas fechas."; return; }
 
-        const pdfContainer = document.getElementById('pdf-container');
-        pdfContainer.innerHTML = '<h1 style="text-align:center; margin-bottom: 20px;">Reporte de Cargos</h1>';
-
-        data.forEach((cargo, index) => {
-            const fecha = new Date(cargo.fecha).toLocaleDateString('es-ES');
-            const html = `
-                <div class="pdf-cargo">
-                    <h3>Cargo #${index + 1} - Fecha: ${fecha}</h3>
-                    <p><strong>Estado:</strong> ${cargo.estatus.toUpperCase()}</p>
-                    <div style="margin: 15px 0; padding: 10px; background: #f9f9f9; border: 1px solid #ddd;">
-                        ${cargo.observacion || 'Sin contenido'}
-                    </div>
-                    <div class="pdf-signatures">
-                        <div class="pdf-sig-box">
-                            ${cargo.firma_recepcion_url ? `<img src="${cargo.firma_recepcion_url}?t=${new Date().getTime()}" crossorigin="anonymous">` : '<p>Sin firma</p>'}
-                            <p><strong>Creador:</strong> ${cargo.responsable}</p>
-                        </div>
-                        <div class="pdf-sig-box">
-                            ${cargo.firma_receptor_url ? `<img src="${cargo.firma_receptor_url}?t=${new Date().getTime()}" crossorigin="anonymous">` : '<p>Sin firma</p>'}
-                            <p><strong>Receptor:</strong> ${cargo.nombre_receptor || 'N/A'}</p>
-                        </div>
-                    </div>
+            const container = document.getElementById('pdf-container');
+            container.innerHTML = `
+                <div class="pdf-page" id="pdf-content">
+                    <h2 style="text-align:center; color:black;">Reporte de Cargos</h2>
+                    <p style="text-align:center; color:#555;">Desde: ${start} Hasta: ${end}</p>
+                    <p style="text-align:center; color:#555;">Usuario: ${currentUser.usuario}</p>
+                    <table class="pdf-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Detalle</th>
+                                <th>Estado</th>
+                                <th>Firma Creador</th>
+                                <th>Firma Receptor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(c => `
+                                <tr>
+                                    <td>${new Date(c.fecha).toLocaleDateString('es-ES')}</td>
+                                    <td>${c.item.substring(0, 40)}...</td>
+                                    <td>${c.estatus}</td>
+                                    <td><img src="${c.firma_recepcion_url}?t=${Date.now()}" class="pdf-sign-img" crossorigin="anonymous"></td>
+                                    <td>${c.firma_receptor_url ? `<img src="${c.firma_receptor_url}?t=${Date.now()}" class="pdf-sign-img" crossorigin="anonymous">` : 'Pendiente'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
                 </div>
             `;
-            pdfContainer.innerHTML += html;
-        });
 
-        pdfContainer.style.display = 'block'; 
+            // Esperar a que las imágenes carguen
+            setTimeout(() => {
+                const { jsPDF } = window.jspdf;
+                html2canvas(document.getElementById('pdf-content'), { scale: 2, useCORS: true }).then(canvas => {
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save(`Reporte_Cargos_${start}_al_${end}.pdf`);
+                    msg.textContent = "PDF descargado con éxito.";
+                    container.innerHTML = ''; // Limpiar
+                });
+            }, 1500);
 
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        
-        try {
-            const canvas = await html2canvas(pdfContainer, { scale: 2, useCORS: true });
-            const imgData = canvas.toDataURL('image/png');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save('Reporte_Cargos.pdf');
         } catch (err) {
-            console.error("Error generando PDF:", err);
-            alert("Hubo un problema al generar el PDF.");
-        } finally {
-            pdfContainer.style.display = 'none'; 
-            pdfContainer.innerHTML = '';
+            document.getElementById('report-msg').textContent = 'Error: ' + err.message;
         }
     }
 
     // --- UTILIDADES CANVAS ---
-    function initCanvas(idx) {
-        const canvas = document.getElementById(`canvas-${idx}`); if (!canvas) return;
+    function initCanvas(idSuffix) {
+        const canvas = document.getElementById(`canvas-${idSuffix}`); 
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const dpr = window.devicePixelRatio || 1;
-        canvas.width = canvas.offsetWidth * dpr; canvas.height = canvas.offsetHeight * dpr;
+        canvas.width = canvas.offsetWidth * dpr; 
+        canvas.height = canvas.offsetHeight * dpr;
         ctx.scale(dpr, dpr);
-        ctx.strokeStyle = '#000000'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        let isDrawing = false; let lastX = 0; let lastY = 0; let lastTime = 0; let lastLineWidth = 3.5;
-        function getPosition(e) { const rect = canvas.getBoundingClientRect(); return { x: (e.clientX || e.touches[0].clientX) - rect.left, y: (e.clientY || e.touches[0].clientY) - rect.top }; }
+        ctx.strokeStyle = '#000000'; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 3;
+        
+        let isDrawing = false; let lastX = 0; let lastY = 0;
+        
+        function getPos(e) { 
+            const rect = canvas.getBoundingClientRect(); 
+            return { 
+                x: (e.clientX || e.touches[0].clientX) - rect.left, 
+                y: (e.clientY || e.touches[0].clientY) - rect.top 
+            }; 
+        }
+        
+        function start(e) { e.preventDefault(); isDrawing = true; const pos = getPos(e); [lastX, lastY] = [pos.x, pos.y]; }
         function draw(e) {
             if (!isDrawing) return; e.preventDefault();
-            const pos = getPosition(e); const currentTime = Date.now(); const timeDiff = currentTime - lastTime || 1;
-            const distance = Math.sqrt(Math.pow(pos.x - lastX, 2) + Math.pow(pos.y - lastY, 2));
-            const velocity = distance / timeDiff;
-            const lineWidth = Math.max(2.5, Math.min(7.0, 7.0 - velocity * 1.5));
-            ctx.lineWidth = (lineWidth + lastLineWidth) / 2;
+            const pos = getPos(e);
             ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
-            [lastX, lastY, lastTime, lastLineWidth] = [pos.x, pos.y, currentTime, lineWidth];
+            [lastX, lastY] = [pos.x, pos.y];
         }
-        function startDrawing(e) {
-            e.preventDefault(); isDrawing = true; const pos = getPosition(e);
-            [lastX, lastY] = [pos.x, pos.y]; lastTime = Date.now(); lastLineWidth = 3.5;
-            ctx.beginPath(); ctx.arc(pos.x, pos.y, lastLineWidth / 2, 0, Math.PI * 2); ctx.fillStyle = '#000000'; ctx.fill();
-        }
-        function stopDrawing() { isDrawing = false; ctx.beginPath(); }
-        canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
-        canvas.addEventListener('touchstart', startDrawing); canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('touchend', stopDrawing); canvas.addEventListener('touchcancel', stopDrawing);
+        function stop() { isDrawing = false; }
+
+        canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stop); canvas.addEventListener('mouseout', stop);
+        canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stop); canvas.addEventListener('touchcancel', stop);
     }
 
-    function clearCanvas(idx) { const canvas = document.getElementById(`canvas-${idx}`); if (canvas) { const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); } }
+    function clearCanvas(idSuffix) { 
+        const canvas = document.getElementById(`canvas-${idSuffix}`); 
+        if (canvas) { 
+            const ctx = canvas.getContext('2d'); 
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+        } 
+    }
+
+    function isCanvasBlank(canvas) {
+        const blank = document.createElement('canvas');
+        blank.width = canvas.width; blank.height = canvas.height;
+        return canvas.toDataURL() === blank.toDataURL();
+    }
 
     function dataURLtoBlob(dataurl) {
-        const arr = dataurl.split(',');
-        const mime = arr[0].match(/:(.*?);/)[1];
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
+        const arr = dataurl.split(','); const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]); let n = bstr.length; const u8arr = new Uint8Array(n);
         while (n--) u8arr[n] = bstr.charCodeAt(n);
         return new Blob([u8arr], {type: mime});
     }
 </script>
-
-
-    
 </body>
 </html>
+
