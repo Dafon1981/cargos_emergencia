@@ -134,7 +134,6 @@
         <div class="buttons">
             <button class="btn-blue" onclick="previewReport()">Ver Vista Previa</button>
             <button id="btn-download-pdf" class="btn-green hidden" onclick="downloadPDF()">Descargar PDF</button>
-            <!-- CAMBIO: Botón Compartir -->
             <button id="btn-share-pdf" class="btn-yellow hidden" onclick="sharePDF()">Compartir</button>
             <button class="btn-gray" onclick="showView('dashboard')">Cancelar</button>
         </div>
@@ -217,7 +216,7 @@
         } else if (viewId === 'report-view') {
             document.getElementById('report-preview-container').classList.add('hidden');
             document.getElementById('btn-download-pdf').classList.add('hidden');
-            document.getElementById('btn-share-pdf').classList.add('hidden'); // Ocultar botón compartir
+            document.getElementById('btn-share-pdf').classList.add('hidden');
             document.getElementById('report-msg').textContent = '';
         }
     }
@@ -549,7 +548,7 @@
             msg.textContent = "Vista previa generada. Revisa abajo.";
             previewContainer.classList.remove('hidden');
             document.getElementById('btn-download-pdf').classList.remove('hidden');
-            document.getElementById('btn-share-pdf').classList.remove('hidden'); // Mostrar botón compartir
+            document.getElementById('btn-share-pdf').classList.remove('hidden');
 
         } catch (err) {
             document.getElementById('report-msg').textContent = 'Error: ' + err.message;
@@ -565,9 +564,13 @@
             html2canvas(document.getElementById('pdf-content'), { scale: 2, useCORS: true }).then(canvas => {
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const imgData = canvas.toDataURL('image/png');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
+                
+                // Configuración de márgenes (15mm)
+                const margin = 15;
+                const pdfWidth = pdf.internal.pageSize.getWidth() - (margin * 2);
                 const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                
+                pdf.addImage(imgData, 'PNG', margin, margin, pdfWidth, pdfHeight);
                 
                 const start = document.getElementById('report-start').value;
                 const end = document.getElementById('report-end').value;
@@ -578,7 +581,7 @@
         }, 500);
     }
 
-    // --- COMPARTIR PDF (NUEVO) ---
+    // --- COMPARTIR PDF ---
     function sharePDF() {
         const msg = document.getElementById('report-msg');
         msg.textContent = "Preparando archivo para compartir...";
@@ -588,19 +591,21 @@
             html2canvas(document.getElementById('pdf-content'), { scale: 2, useCORS: true }).then(async canvas => {
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const imgData = canvas.toDataURL('image/png');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
+                
+                // Configuración de márgenes (15mm)
+                const margin = 15;
+                const pdfWidth = pdf.internal.pageSize.getWidth() - (margin * 2);
                 const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                
+                pdf.addImage(imgData, 'PNG', margin, margin, pdfWidth, pdfHeight);
                 
                 const start = document.getElementById('report-start').value;
                 const end = document.getElementById('report-end').value;
                 const fileName = `Reporte_Cargos_${start}_al_${end}.pdf`;
                 
-                // Convertir el PDF a un objeto File
                 const pdfBlob = pdf.output('blob');
                 const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-                // Verificar si el navegador soporta compartir archivos
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     try {
                         await navigator.share({
@@ -614,7 +619,6 @@
                         msg.textContent = "Se canceló o hubo un error al compartir.";
                     }
                 } else {
-                    // Fallback si no soporta compartir (ej. PC antigua)
                     msg.textContent = "Tu navegador no soporta compartir archivos directamente. Descargando...";
                     pdf.save(fileName);
                 }
